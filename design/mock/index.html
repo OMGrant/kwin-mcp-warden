@@ -276,7 +276,7 @@
     <li><span class="n">2</span><span><b>Grants per window, in four levels.</b> See, Arrange, Control, or Full desktop. Claude asks for the least it needs in one window, and the card names that window by its title and shows how much on a four-step scale. Claude sees nothing of any other window, not even the same app's.</span></li>
     <li><span class="n">3</span><span><b>Visible while it lasts.</b> The window Claude controls has an orange frame and a tag with a Stop button. Your pointer carries a "Claude" label while Claude moves it.</span></li>
     <li><span class="n">4</span><span><b>Your hands come first.</b> Click or press a key and Claude pauses. A nudged mouse pauses Claude only while it uses the pointer. It continues after 3 seconds without your input.</span></li>
-    <li><span class="n">5</span><span><b>Grants end.</b> Each grant ends when the session ends or after 1 hour, whichever comes first. Meta+Alt+Esc ends every grant at once, and so does the access list.</span></li>
+    <li><span class="n">5</span><span><b>Grants end.</b> Each grant ends when the session ends or when the length you picked on its card runs out, whichever comes first. Meta+Alt+Esc ends every grant at once, and so does the access list.</span></li>
     <li><span class="n">6</span><span><b>Some things are never granted.</b> The warden's own prompt, password prompts and the lock screen can't be granted. Closing a window asks every time.</span></li>
   </ul>
 </section>
@@ -301,7 +301,7 @@
     <li><span class="n">2</span><span><b>Why, in Claude's own words.</b> Quoted, so it reads as Claude speaking. Required: a request without a reason is refused before it reaches you.</span></li>
     <li><span class="n">3</span><span><b>How much.</b> Four steps, filled up to the one asked for, in that level's color: gray for See and Arrange, Claude's orange for Control, red for Full desktop. One line under it says what that means in this app.</span></li>
     <li><span class="n">4</span><span><b>The risk, only when there is one.</b> Chrome is signed in to your accounts. Terminals and IDEs get "the same as running any command." This follows Anthropic's own computer-use prompt.</span></li>
-    <li><span class="n">5</span><span><b>The answer says how long.</b> "Allow for 1 Hour" puts the limit on the button you press, so it needs no line of its own. The grant also ends with the session. Go to Session shows you the session's desktop first. Only a click allows; Esc means Don't Allow. Unanswered after 2 minutes counts as Don't Allow.</span></li>
+    <li><span class="n">5</span><span><b>You pick how long.</b> A row of lengths sits above the buttons: 1, 4 or 8 hours for a window, 30 minutes or 1 hour for the whole desktop, up to the ceiling in your settings (with no ceiling it also offers "This session"). The agent's ask is selected when the card opens, and you can pick shorter or longer. The Allow button names the length you picked ("Allow for 4 Hours"), and a click on a length never answers the card. The grant also ends with the session. Go to Session shows you the session's desktop first. Only a click allows; Esc means Don't Allow. Unanswered after 2 minutes counts as Don't Allow.</span></li>
   </ul>
   <div class="gap"></div>
   <div class="pair">
@@ -426,7 +426,7 @@
     <tr><td>See</td><td>List the window with its title. Read its text through accessibility. Take pictures of it, with everything else blacked out.</td><td><code>window_list</code> (other windows aren't listed at all), <code>element_query</code>, <code>screen_capture</code> of that window</td></tr>
     <tr><td>Arrange</td><td>Move, resize and focus the window, and send it to another desktop.</td><td><code>window_place</code>, <code>window_focus</code></td></tr>
     <tr><td>Control</td><td>Click, type, scroll and touch inside the window only. Each event is checked against the window under the pointer or with focus, and refused when that isn't the granted window or one of its dialogs or menus.</td><td><code>pointer_*</code>, <code>keyboard_*</code>, <code>touch_*</code>, <code>element_act</code></td></tr>
-    <tr><td>Full desktop</td><td>Control of every window, except what is never granted. Its card uses the red warning. It never runs longer than the session, and caps at 30 minutes.</td><td>All of the above, on any window</td></tr>
+    <tr><td>Full desktop</td><td>Control of every window, except what is never granted. Its card uses the red warning. It never runs longer than the session, and its card offers 30 minutes or 1 hour unless you raise its ceiling.</td><td>All of the above, on any window</td></tr>
   </table>
   <div class="gap"></div>
   <table class="data">
@@ -460,7 +460,7 @@
     <tr><td>The warden</td><td>Sits in front of every kwin-mcp tool. Each call is checked against the grants, or opens a card and waits. A tool missing from the levels table is refused, so a new upstream tool is closed until it's placed.</td></tr>
     <tr><td>The card and frame</td><td>A small Qt Quick overlay (layer shell) above every window on every screen: the dim on each one, the card in the middle of the primary monitor, which is read from KDE rather than named in the code. Its window color, text, font and warning colors come from your KDE theme through Kirigami.Theme at run time, so a different theme follows; the shapes, buttons, scale and Claude's orange are its own.</td></tr>
     <tr><td>Your hands first</td><td>Watches for your input through KWin and holds Claude's queued events while you're active. Claude's own events come in through its own input connection, so KWin can tell them apart. That is not proven yet. A small test inside a nested KWin comes first, before anything else is built.</td></tr>
-    <tr><td>Settings</td><td>A plain file you can edit: maximum grant time, the pause time, the stop key, the warning list and the never list.</td></tr>
+    <tr><td>Settings</td><td>A plain file you can edit: the longest grant each card offers (0 = until the session ends), the length selected by default, the pause time, the stop key, the warning list and the never list.</td></tr>
     <tr><td>The log</td><td>One line per request and per answer, plus every refused event, in <code>~/.local/state/kwin-mcp-warden/log</code>.</td></tr>
     <tr><td>Boundary tests</td><td>Each run inside a private nested KWin, never on your desktop. Each test tries to cross a limit from outside: a click on a window that wasn't granted, a click while a card is open, a key while you're typing, a tool not in the table, a grant past its hour. Each one is first proven to catch a planted fault.</td></tr>
   </table>

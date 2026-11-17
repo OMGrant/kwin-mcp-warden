@@ -3,7 +3,7 @@
 A grant is for one window and one level (See, Arrange, Control), for the whole
 desktop, or for a screen of Claude's own. A window's grant covers its own dialogs
 and menus (the windows KWin says are transient for it), never the app's other
-windows. It ends at the first of: its time limit, the end of the
+windows. It ends at the first of: the length the person picked on the card, the end of the
 session (this process), the stop key, or an End in the access list.
 """
 
@@ -43,14 +43,16 @@ class Grant:
         return now < self.expires and self.given > state.stop_time() and not state.ended(self.id)
 
     def describe(self) -> str:
-        left = max(0, int(self.expires - time.time()) // 60)
+        from kwin_mcp.warden.lengths import left
+
+        remaining = left(self.expires - time.time())
         if self.kind == "own_screen":
             what = "a screen of its own"
         elif self.kind == "full_desktop":
             what = "your whole desktop"
         else:
             what = f"{LEVEL_NAMES[self.level]} in one {self.app_name} window"
-        return f"{what} ({left} min left)"
+        return f"{what} ({remaining})"
 
 
 class GrantBook:
@@ -74,7 +76,10 @@ class GrantBook:
         window: str = "",
         window_title: str = "",
     ) -> Grant:
+        from kwin_mcp.warden.lengths import SESSION, SESSION_SECONDS
+
         now = time.time()
+        seconds = SESSION_SECONDS if minutes == SESSION else minutes * 60
         grant = Grant(
             id=secrets.token_hex(6),
             kind=kind,
@@ -83,7 +88,7 @@ class GrantBook:
             level=level,
             reason=reason,
             given=now,
-            expires=now + minutes * 60,
+            expires=now + seconds,
             window=window,
             window_title=window_title,
         )

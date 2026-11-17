@@ -4,8 +4,9 @@ A fork of isac322/kwin-mcp (MIT): every kwin-mcp tool, with a warden in front of
 On the live desktop nothing passes without a grant the person gave on a consent card
 (UAC-style: front and center on the primary monitor, every screen dimmed, only a click
 allows, Allow waits 1 s, Esc or 2 min = Don't Allow). Grants are per window (with its own dialogs and menus) in four levels
-(See, Arrange, Control, Full desktop), or a screen of Claude's own; they end after 1 hour
-(Full desktop 30 min), with the session, on Meta+Alt+Esc, or from the access list.
+(See, Arrange, Control, Full desktop), or a screen of Claude's own; they last the length the
+person picks on the card (1, 4 or 8 hours; Full desktop 30 min or 1 hour; ceilings in settings,
+`lengths.py`), and end with the session, on Meta+Alt+Esc, or from the access list.
 
 - Spec: `design/mock/index.html` (its "Accessibility" section too), served with
   `python3 -m http.server 8931 --bind 127.0.0.1` from `design/mock`.

@@ -630,6 +630,37 @@ def test_a_granted_windows_dialog_comes_with_it(claude, person, apps):
         claude.warden.book.end_all()
 
 
+@pytest.mark.parametrize(("asked", "picked"), [(480, 60), (60, 480)])
+def test_the_person_picks_how_long_not_the_agent(claude, person, apps, asked, picked):
+    """The agent asks for one length; the person clicks another on the card, shorter or
+    longer, and the grant lasts what the person picked."""
+    claude.warden.book.end_all()
+    result: dict = {}
+
+    def run():
+        result["value"] = claude.warden.request(
+            "control", "org.kde.kate", "Test the warden.", minutes=asked
+        )
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    geometry = state.runtime_dir() / "card-geometry.json"
+    found = _wait_for(lambda: geometry.exists() and geometry.read_text(), timeout=20)
+    assert found, "the card never showed its buttons"
+    spots = json.loads(found)
+    assert f"length-{picked}" in spots, spots
+    for name in (f"length-{picked}", "allow"):
+        x, y, w, h = spots[name]
+        person.pointer_click(target=Point(x=x + w // 2, y=y + h // 2))
+        time.sleep(0.3)
+    thread.join(60)
+    allowed, text = result["value"]
+    assert allowed, text
+    (grant,) = [g for g in claude.warden.book.alive() if g.kind == "window"]
+    assert abs((grant.expires - grant.given) - picked * 60) < 5, grant.expires - grant.given
+    claude.warden.book.end_all()
+
+
 def test_typing_follows_focus(claude, person, apps):
     _ensure_control(claude, person)
     kate = _window(person, "kate")

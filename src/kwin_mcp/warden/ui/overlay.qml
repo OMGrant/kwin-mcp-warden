@@ -240,7 +240,7 @@ QtObject {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: tagWin.modelData.session + " · " + tagWin.modelData.minutes + " min left"
+                        text: tagWin.modelData.session + " · " + tagWin.modelData.left
                         color: tagWin.tokens.fgSubtle
                         font.family: tagWin.tokens.sans; font.pixelSize: 13
                     }
@@ -674,9 +674,9 @@ QtObject {
                                 text: (grantRow.modelData.who || grantRow.modelData.session) + " · <font color='"
                                       + listWin.tokens.levelColor(grantRow.modelData.level) + "'>"
                                       + grantRow.modelData.levelName + "</font> · "
-                                      + grantRow.modelData.minutes + " min left"
+                                      + grantRow.modelData.left
                                 Accessible.role: Accessible.StaticText
-                                Accessible.name: (grantRow.modelData.who || grantRow.modelData.session) + " · " + grantRow.modelData.levelName + " · " + grantRow.modelData.minutes + " min left"
+                                Accessible.name: (grantRow.modelData.who || grantRow.modelData.session) + " · " + grantRow.modelData.levelName + " · " + grantRow.modelData.left
                                 color: listWin.tokens.fgSubtle
                                 font.family: listWin.tokens.sans; font.pixelSize: 12
                             }

@@ -33,7 +33,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from kwin_mcp.warden import a11y, apps, log, state
+from kwin_mcp.warden import a11y, apps, lengths, log, state
 from kwin_mcp.warden.policy import LEVEL_NAMES, covers
 from kwin_mcp.warden.settings import load
 
@@ -677,6 +677,7 @@ def overlay_state(settings: Any) -> dict[str, Any]:
                 "level": g.get("level", ""),
                 "levelName": LEVEL_NAMES.get(g.get("level", ""), "Own screen"),
                 "minutes": max(0, int((g["expires"] - now) // 60)),
+                "left": lengths.left(g["expires"] - now),
             }
         )
     frames = []
@@ -699,6 +700,7 @@ def overlay_state(settings: Any) -> dict[str, Any]:
                         "session": g.get("session", ""),
                         "agent": g.get("agent") or "Claude",
                         "minutes": max(0, int((g["expires"] - now) // 60)),
+                        "left": lengths.left(g["expires"] - now),
                     }
                 )
     # The corner notice: every grant that lets Claude click or type on your screen.
@@ -725,7 +727,7 @@ def overlay_state(settings: Any) -> dict[str, Any]:
                 f"{len(sessions)} sessions · {', '.join(apps_held)}"
                 if len(sessions) > 1
                 else f"{sessions[0]} · {', '.join(apps_held)} · "
-                f"{min(g['minutes'] for g in control)} min left"
+                f"{min(control, key=lambda g: g['minutes'])['left']}"
             ),
         }
     paused = now - _mtime("paused") < 0.6

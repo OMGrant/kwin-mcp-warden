@@ -38,7 +38,7 @@ from kwin_mcp.models import (
     WindowSelector,
 )
 from kwin_mcp.session import HOST_DESKTOP_ENV, LiveSession, Session
-from kwin_mcp.warden import a11y, apps, card, log, state
+from kwin_mcp.warden import a11y, apps, card, lengths, log, state
 from kwin_mcp.warden.grants import Grant, GrantBook
 from kwin_mcp.warden.policy import (
     LEVEL_NAMES,
@@ -273,8 +273,16 @@ class Warden:
 
     # access_request
 
-    def request(self, level: str, app: str, reason: str) -> tuple[bool, str]:
-        """Open the card for a grant. Returns (allowed, text for Claude)."""
+    def request(
+        self, level: str, app: str, reason: str, minutes: int | None = None
+    ) -> tuple[bool, str]:
+        """Open the card for a grant. Returns (allowed, text for Claude).
+
+        ``minutes`` is how long the agent asks for (0 = until its session ends): only the
+        length selected when the card opens. The person picks any offered length."""
+        if minutes is not None and minutes < 0:
+            return False, "minutes is how long you ask for: 0 (the session) or more."
+        self._asked_minutes = minutes
         name = self.session_name()
         reason = (reason or "").strip()
         if not reason:
@@ -339,7 +347,7 @@ class Warden:
             "your mouse or keyboard.",
         }[level]
         risk = self.warning(app)
-        minutes = self.settings.grant_minutes
+        choices, selected = self._lengths("window")
         request = {
             "kind": "window",
             "icon": icon,
@@ -349,21 +357,37 @@ class Warden:
             "means": means,
             "means_more": "Its own dialogs and menus too. Nothing else.",
             "risk": risk if level != "see" else "",
-            "allow": _allow_label(minutes),
+            **lengths.choices_for_card(choices, selected),
         }
         if opening is not None:
             request["title"] = (
                 f"{self.agent} asks to open {display} and {LEVEL_VERBS[level]} its window"
             )
             request["note"] = f"{display} isn't open. Allow opens a new {display} window first."
-            request["allow"] = "Open and " + _allow_label(minutes)
+            request.update(lengths.choices_for_card(choices, selected, "Open and "))
         outcome = self._card(request)
         if opening is not None and outcome.answer == "allow":
             window, problem = self._open_for_grant(app, display, opening)
             if problem:
                 log.write(name, "nothing granted", f"{display}, {LEVEL_NAMES[level]}: {problem}")
                 return False, f"Not allowed: {problem} Nothing was granted."
+        minutes = _chosen(outcome, choices, selected)
         return self._settle(outcome, "window", level, app, display, reason, minutes, window=window)
+
+    def _lengths(self, kind: str) -> tuple[list[int], int]:
+        """The lengths a card offers for ``kind`` and the one selected as it opens."""
+        st = self.settings
+        if kind == "full_desktop":
+            ladder, default, ceiling = (
+                lengths.FULL_DESKTOP_LADDER,
+                st.full_desktop_minutes,
+                st.max_full_desktop_minutes,
+            )
+        else:
+            default = st.own_screen_minutes if kind == "own_screen" else st.grant_minutes
+            ladder, ceiling = lengths.WINDOW_LADDER, st.max_grant_minutes
+        choices = lengths.offered(ladder, default, ceiling)
+        return choices, lengths.pick(getattr(self, "_asked_minutes", None), default, choices)
 
     def _window_to_ask_for(
         self, app: str, level: str
@@ -487,7 +511,7 @@ class Warden:
         held = self.book.full_desktop()
         if held is not None:
             return True, f"Already allowed: {held.describe()}."
-        minutes = min(self.settings.full_desktop_minutes, self.settings.grant_minutes)
+        choices, selected = self._lengths("full_desktop")
         outcome = self._card(
             {
                 "kind": "full_desktop",
@@ -500,9 +524,10 @@ class Warden:
                 "risk": "Includes your terminals: the same as running any command on this "
                 "computer.",
                 "hard": True,
-                "allow": _allow_label(minutes),
+                **lengths.choices_for_card(choices, selected),
             }
         )
+        minutes = _chosen(outcome, choices, selected)
         return self._settle(
             outcome, "full_desktop", "full_desktop", "", "your whole desktop", reason, minutes
         )
@@ -511,7 +536,7 @@ class Warden:
         held = self.book.own_screen()
         if held is not None:
             return True, f"Already allowed: {held.describe()}."
-        minutes = self.settings.own_screen_minutes
+        choices, selected = self._lengths("own_screen")
         where = self.desktop_label() or "this session's desktop"
         outcome = self._card(
             {
@@ -523,9 +548,10 @@ class Warden:
                 "keyboard.",
                 "means_more": "Nothing of yours is inside it, and it closes when the grant ends.",
                 "risk": f"Apps {self.agent} opens there run as you, so they can read your files.",
-                "allow": _allow_label(minutes),
+                **lengths.choices_for_card(choices, selected),
             }
         )
+        minutes = _chosen(outcome, choices, selected)
         return self._settle(outcome, "own_screen", "", "", "a screen of its own", reason, minutes)
 
     def _ask_accessibility(self, reason: str) -> tuple[bool, str]:
@@ -755,11 +781,10 @@ def _markup_safe(text: str) -> str:
     return html.escape(text, quote=False)
 
 
-def _allow_label(minutes: int) -> str:
-    if minutes % 60 == 0:
-        hours = minutes // 60
-        return f"Allow for {hours} Hour" + ("" if hours == 1 else "s")
-    return f"Allow for {minutes} Minutes"
+def _chosen(outcome: card.Outcome, choices: list[int], selected: int) -> int:
+    """The length the person picked on the card; one the card didn't offer (or none
+    reported) counts as the one it opened with."""
+    return outcome.minutes if outcome.minutes in choices else selected
 
 
 # ── The daemon: stop key, your hands, the frame and the access list ───────────

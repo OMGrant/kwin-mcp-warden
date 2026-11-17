@@ -39,6 +39,7 @@ PLANTS = {
     "windows-listed": "test_window_list_shows_no_window_without_see",
     "any-window-grant": "test_allow_grants_control_in_that_app_only",
     "app-wide-grant": "test_a_grant_covers_one_window_not_the_whole_app",
+    "agent-picks-length": "test_the_person_picks_how_long_not_the_agent",
     "never-list-ignored": "test_never_list_refuses_without_a_card",
     "warden-windows-open": "test_the_wardens_own_windows_are_never_granted",
     "ask-reason-optional": "test_ask_every_time_tools_need_a_reason",
@@ -253,6 +254,9 @@ def _apply_plant(name: str, mp: pytest.MonkeyPatch) -> None:
             return None
 
         mp.setattr(grants.GrantBook, "for_window", app_wide)
+    elif name == "agent-picks-length":
+        # The grant lasts what the agent asked for, whatever the person picked.
+        mp.setattr(gate, "_chosen", lambda outcome, choices, selected: selected)
     elif name == "never-list-ignored":
         from kwin_mcp.warden import settings as settings_mod
 

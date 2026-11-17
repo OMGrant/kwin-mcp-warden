@@ -1160,7 +1160,7 @@
   {
    "name": "access_request",
    "title": "Ask the person for access",
-   "description": "Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). Grants last 1 hour or until the session ends; the person can end them at any time.",
+   "description": "Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). They pick how long it lasts.",
    "annotations": {
     "readOnlyHint": false,
     "destructiveHint": false,
@@ -1171,7 +1171,7 @@
     {
      "name": "level",
      "required": true,
-     "description": "The least you need: see (read and picture one window, with its dialogs), arrange (move it), control (click and type in it), full_desktop (every window, 30 min at most), own_screen (a virtual session of your own, for session_start), accessibility (the desktop's switch, for keyboard_type(into))."
+     "description": "The least you need: see (read and picture one window, with its dialogs), arrange (move it), control (click and type in it), full_desktop (every window), own_screen (a virtual session of your own, for session_start), accessibility (the desktop's switch, for keyboard_type(into))."
     },
     {
      "name": "reason",
@@ -1183,6 +1183,12 @@
      "required": false,
      "default": "",
      "description": "The app's id or name (e.g. google-chrome, org.kde.kate); needed for see, arrange and control."
+    },
+    {
+     "name": "minutes",
+     "required": false,
+     "default": null,
+     "description": "Minutes wanted, 0 = this session; the person picks."
     }
    ],
    "output": [

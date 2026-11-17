@@ -109,8 +109,13 @@ DEFAULT_NEVER_DBUS_PATHS: tuple[str, ...] = (
 class Settings:
     """Every setting the warden reads; field defaults are the design's."""
 
+    # How long a grant lasts: the length selected on the card when the agent doesn't
+    # ask for one, and the longest the card offers (0 = until the session ends, and the
+    # card offers "This session"). The person picks any offered length on the card.
     grant_minutes: int = 60  # "Allow for 1 Hour"
-    full_desktop_minutes: int = 30  # Full desktop caps at 30 minutes
+    max_grant_minutes: int = 480  # a window or a screen of its own: up to 8 hours
+    full_desktop_minutes: int = 30
+    max_full_desktop_minutes: int = 60  # the whole desktop: up to 1 hour
     own_screen_minutes: int = 60
     answer_seconds: int = 120  # unanswered after 2 minutes = Don't Allow
     allow_delay_ms: int = 1000  # Firefox's security.dialog_enable_delay
@@ -167,11 +172,15 @@ def load(path: Path | None = None) -> Settings:
                 bad.append(f"{key} should be {type(current).__name__}")
         else:
             setattr(settings, key, value)
-    # Bounds: the file can make the warden stricter, never looser than the design.
+    # Bounds: the file can make the warden stricter, never looser than the design; the
+    # longest grant is the person's own choice (0 = until the session ends).
+    year = 365 * 24 * 60
     limits = {
-        "grant_minutes": (1, 60),
-        "full_desktop_minutes": (1, 30),
-        "own_screen_minutes": (1, 60),
+        "max_grant_minutes": (0, year),
+        "max_full_desktop_minutes": (0, year),
+        "grant_minutes": (1, year),
+        "full_desktop_minutes": (1, year),
+        "own_screen_minutes": (1, year),
         "answer_seconds": (10, 280),
         "allow_delay_ms": (1000, 10_000),
         "pause_seconds": (1.0, 60.0),
@@ -184,6 +193,15 @@ def load(path: Path | None = None) -> Settings:
         if clamped != value:
             bad.append(f"{key} {value} is outside {low}..{high}, using {clamped}")
             setattr(settings, key, type(value)(clamped))
+    # A default length past its ceiling comes down to the ceiling.
+    for key, ceiling in (
+        ("grant_minutes", settings.max_grant_minutes),
+        ("own_screen_minutes", settings.max_grant_minutes),
+        ("full_desktop_minutes", settings.max_full_desktop_minutes),
+    ):
+        if ceiling and getattr(settings, key) > ceiling:
+            bad.append(f"{key} {getattr(settings, key)} is past its ceiling, using {ceiling}")
+            setattr(settings, key, ceiling)
     if bad:
         settings.problem = f"settings file {path}: " + "; ".join(bad)
     return settings

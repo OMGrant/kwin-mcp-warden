@@ -1175,8 +1175,8 @@ def access_request(
         Field(
             description="The least you need: see (read and picture one window, with its "
             "dialogs), arrange (move it), control (click and type in it), "
-            "full_desktop (every window, 30 min "
-            "at most), own_screen (a virtual session of your own, for session_start), "
+            "full_desktop (every window), own_screen (a virtual session of your own, for "
+            "session_start), "
             "accessibility (the desktop's switch, for keyboard_type(into))."
         ),
     ],
@@ -1191,11 +1191,15 @@ def access_request(
             "for see, arrange and control."
         ),
     ] = "",
+    minutes: Annotated[
+        int | None,
+        Field(description="Minutes wanted, 0 = this session; the person picks."),
+    ] = None,
 ) -> AccessResult:
-    """Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). Grants last 1 hour or until the session ends; the person can end them at any time."""  # noqa: E501
+    """Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). They pick how long it lasts."""  # noqa: E501
     if not isinstance(engine, WardenEngine):
         return AccessResult(allowed=False, text="This server runs without the warden.")
-    allowed, text = engine.warden.request(level, app, reason)
+    allowed, text = engine.warden.request(level, app, reason, minutes)
     return AccessResult(allowed=allowed, text=text)
 
 

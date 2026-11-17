@@ -55,6 +55,7 @@ type Answer = Literal["allow", "deny", "timeout", "go", "failed"]
 class Outcome:
     answer: Answer
     detail: str = ""
+    minutes: int | None = None  # the length the person picked on the card, with Allow
 
 
 def qml_program() -> str | None:
@@ -166,12 +167,16 @@ def show(request: dict[str, Any], env: dict[str, str] | None = None) -> Outcome:
         except OSError as exc:
             return Outcome("failed", f"the card could not start: {exc}")
         tail: list[str] = []
+        picked: int | None = None
         try:
             assert proc.stderr is not None
             for line in proc.stderr:
                 if "WARDEN-CARD-GEOMETRY " in line:
                     with contextlib.suppress(OSError):
                         geometry.write_text(line.split("WARDEN-CARD-GEOMETRY ", 1)[1].strip())
+                elif "WARDEN-CARD-LENGTH " in line:
+                    with contextlib.suppress(ValueError):
+                        picked = int(line.split("WARDEN-CARD-LENGTH ", 1)[1].strip())
                 else:
                     tail = [*tail[-2:], line.strip()]
                 if time.monotonic() - started > limit:
@@ -185,7 +190,7 @@ def show(request: dict[str, Any], env: dict[str, str] | None = None) -> Outcome:
                 geometry.unlink()
     code = proc.returncode
     if code == ALLOW_CODE:
-        return Outcome("allow")
+        return Outcome("allow", minutes=picked)
     if code == GO_CODE:
         return Outcome("go")
     if code == TIMEOUT_CODE:

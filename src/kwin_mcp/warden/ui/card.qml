@@ -5,7 +5,9 @@
 // holds the card, centered, and takes the keyboard. The answer is the exit code:
 // 42 = Allow (only ever a click on Allow, after the 1 s wait), 12 = Go to Session,
 // 11 = no answer in time, 10 = Don't Allow (a click, or Esc). The warden treats
-// every other ending (a crash, a kill) as Don't Allow.
+// every other ending (a crash, a kill) as Don't Allow. With Allow, the card also
+// prints the length the person picked (WARDEN-CARD-LENGTH <minutes>); the warden
+// takes it only when it's one the card offered.
 //
 // Colors, text and font come from the KDE theme through Kirigami.Theme; the
 // shapes, sizes, buttons, scale and Claude's orange are kwin-mcp-warden's own.
@@ -33,10 +35,20 @@ QtObject {
     readonly property int entranceMs: Math.round(200 * (app.req.motion === undefined ? 1 : app.req.motion))
     property bool answered: false
 
+    // The length picked on the card (minutes, 0 = this session): the agent's ask at first.
+    property int length: app.req.length === undefined ? -1 : app.req.length
+    readonly property var lengths: app.req.lengths || []
+    readonly property string allowLabel: {
+        const chosen = app.lengths.find(l => l.minutes === app.length);
+        return chosen ? chosen.allow : (app.req.allow || "Allow");
+    }
+
     function answer(code) {
         if (answered)
             return;
         answered = true;
+        if (code === app.allowCode && app.length >= 0)
+            console.info("WARDEN-CARD-LENGTH " + app.length);
         console.info("kwin-mcp-warden card: answer " + code);
         Qt.exit(code);
     }
@@ -169,7 +181,10 @@ QtObject {
             const s = Window.window ? Window.window.screen : null;
             const ox = s ? s.virtualX : 0, oy = s ? s.virtualY : 0;
             const out = {};
-            for (const b of [allowButton, denyButton, goButton]) {
+            const parts = [allowButton, denyButton, goButton];
+            for (let i = 0; i < lengthChips.count; i++)
+                parts.push(lengthChips.itemAt(i));
+            for (const b of parts) {
                 const p = b.mapToItem(null, 0, 0);
                 out[b.objectName] = [Math.round(p.x + ox), Math.round(p.y + oy), b.width, b.height];
             }
@@ -383,6 +398,57 @@ QtObject {
                 }
             }
 
+            // How long: the person picks, shorter or longer than the agent asked. A click
+            // here only picks; it never answers the card.
+            Item { width: 1; height: 16; visible: lengthRow.visible }
+            Row {
+                id: lengthRow
+                visible: app.req.buttons !== false && app.lengths.length > 1
+                width: parent.width
+                spacing: 6
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "For"
+                    color: card.fgSubtle
+                    font.family: card.sans; font.pixelSize: 12
+                    rightPadding: 4
+                }
+                Repeater {
+                    id: lengthChips
+                    model: app.lengths
+                    delegate: Rectangle {
+                        id: lengthChip
+                        required property var modelData
+                        objectName: "length-" + modelData.minutes
+                        readonly property bool chosen: app.length === modelData.minutes
+                        width: chipText.implicitWidth + 20
+                        height: 26
+                        radius: 13
+                        color: chosen ? card.fg : (chipArea.containsMouse ? card.panelHover : "transparent")
+                        border.width: chosen ? 0 : 1
+                        border.color: card.border
+                        Text {
+                            id: chipText
+                            anchors.centerIn: parent
+                            text: lengthChip.modelData.chip
+                            color: lengthChip.chosen ? Kirigami.Theme.backgroundColor : card.fg
+                            font.family: card.sans; font.pixelSize: 12; font.weight: Font.Medium
+                        }
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: lengthChip.modelData.chip
+                        Accessible.checked: lengthChip.chosen
+                        MouseArea {
+                            id: chipArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: app.length = lengthChip.modelData.minutes
+                        }
+                    }
+                }
+            }
+
             // The answer: Allow (says how long), Don't Allow, and Go to Session.
             Item { width: 1; height: 18; visible: app.req.buttons !== false }
             Row {
@@ -394,7 +460,7 @@ QtObject {
                     id: allowButton
                     objectName: "allow"
                     kind: card.ready ? "primary" : "wait"
-                    label: app.req.allow || "Allow"
+                    label: app.allowLabel
                     onClicked: if (card.ready) app.answer(app.allowCode)
                 }
                 CardButton {

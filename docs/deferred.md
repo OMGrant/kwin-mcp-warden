@@ -406,6 +406,16 @@ Every report starts with this list. Each item names the file it lives in.
     the unnamed stranger-check failure of 2026-11-16 too (its name wasn't kept, so that's
     unproven).
 
+31. **Grant lengths, built 2026-11-17** at the owner's ask: the card offers lengths up to a
+    ceiling set in settings (`max_grant_minutes` 480, `max_full_desktop_minutes` 60; 0 = until
+    the session ends, which adds "This session"); the agent's `minutes` only selects one as the
+    card opens, and the person picks any offered length, shorter or longer (`lengths.py`;
+    `gate.py`, `_lengths`, `_chosen`; `ui/card.qml`, the "For" row; the card prints
+    `WARDEN-CARD-LENGTH`, taken only when it's a length the card offered). Tests:
+    `test_the_person_picks_how_long_not_the_agent` (real clicks on the card, both directions;
+    plant `agent-picks-length`), `tests/unit/test_warden_lengths.py`. Not done: a grant can't
+    be lengthened in place; when it runs out the agent asks again and a new card comes up.
+
 ## Limits by design (stated, not deferred)
 
 - The warden guards the kwin-mcp route. A Claude session with a shell can still reach the
