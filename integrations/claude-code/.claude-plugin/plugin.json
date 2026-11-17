@@ -1,8 +1,8 @@
 {
   "$schema": "https://claude.ai/schemas/plugin.json",
-  "name": "kwin-mcp",
-  "version": "1.0.0",
-  "description": "MCP server + skill for Linux KDE Plasma 6 Wayland GUI automation. Provides 29 MCP tools (sessions, apps, screen capture, AT-SPI2 elements with refs, windows and virtual desktops, pointer, keyboard, touch, clipboard, D-Bus and Wayland escape hatches) plus the kwin-desktop-automation skill that guides session-mode selection, observation/action sequencing, and platform pitfalls.",
+  "name": "kwin-mcp-warden",
+  "version": "0.1.0",
+  "description": "kwin-mcp with a warden: MCP server + skill for Linux KDE Plasma 6 Wayland GUI automation where Claude asks first through a consent card, access is granted one window at a time, and a stop key (Meta+Alt+Esc) ends it at once. Provides 31 MCP tools (sessions, apps, screen capture, AT-SPI2 elements with refs, windows and virtual desktops, pointer, keyboard, touch, clipboard, D-Bus and Wayland escape hatches) plus the kwin-desktop-automation skill that guides session-mode selection, observation/action sequencing, and platform pitfalls.",
   "author": {
     "name": "Byeonghoon Yoo",
     "email": "bhyoo@bhyoo.com",
@@ -28,6 +28,7 @@
     "libei",
     "headless-testing",
     "live-desktop",
-    "claude-code"
+    "claude-code",
+    "consent"
   ]
 }

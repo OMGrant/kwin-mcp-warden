@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kwin-mcp-warden · asking first</title>
+<style>
+  /* Fonts as this mock ships them (fonts/LICENSES.md: SIL Open Font License 1.1) */
+  @font-face { font-family: 'Geist'; src: url('fonts/Geist-Variable-latin.woff2') format('woff2'); font-weight: 100 900; font-display: block; }
+  @font-face { font-family: 'Geist Mono'; src: url('fonts/GeistMono-Variable-latin.woff2') format('woff2'); font-weight: 100 900; font-display: block; }
+  /* ═══ THE DOCUMENT: the presentation page ═══ */
+  :root {
+    --page: #f5f5f2; --card: #fbfbf9; --ink: #18181b; --ink-2: #52525b; --ink-3: #71717a; --hair: #dedcd5;
+    --accent-text: #4d7c0f; --brand: #c8f22e;
+    --doc-sans: "Geist", system-ui, sans-serif; --doc-display: "Geist", system-ui, sans-serif; --doc-mono: "Geist Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--doc-sans); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+  .cover { padding: 84px 0 0; }
+  .eyebrow { font: 500 13px/1.4 var(--doc-mono); color: var(--accent-text); margin: 0 0 14px; }
+  .cover h1 { font-family: var(--doc-display); font-size: 54px; font-weight: 700; letter-spacing: -.035em; line-height: 1.04; margin: 0 0 20px; max-width: 20ch; }
+  .cover .deck { font-size: 19px; line-height: 1.5; color: var(--ink-2); max-width: 62ch; margin: 0 0 30px; text-wrap: pretty; }
+  .cover .meta { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 13.5px; color: var(--ink-3); border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); padding: 10px 0; }
+  .cover .meta b { color: var(--ink); font-weight: 500; }
+  section { padding: 72px 0 0; }
+  section:last-of-type { padding-bottom: 96px; }
+  .sec-head { margin: 0 0 26px; }
+  .sec-head h2 { max-width: 40ch; }
+  .sec-head { border-top: 1px solid var(--hair); padding-top: 22px; }
+  .kicker { font: 500 13px/1.4 var(--doc-mono); color: var(--accent-text); display: block; margin-bottom: 12px; }
+  .sec-head h2 { font-family: var(--doc-display); font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.12; margin: 0 0 12px; }
+  .sec-head p { margin: 0 0 10px; color: var(--ink-2); font-size: 16px; max-width: 68ch; }
+  .label { display: flex; align-items: baseline; gap: 6px; font-size: 14px; line-height: 1.4; color: var(--ink-3); margin: 0 0 10px; }
+  .label b { color: var(--ink); font-weight: 600; }
+  .artifact { border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 1px 2px rgba(20,20,15,.10), 0 24px 60px -20px rgba(20,20,15,.38); }
+  .gap { height: 26px; }
+  .changes { margin: 24px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 34px; }
+  .changes li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .changes li b { color: var(--ink); font-weight: 600; }
+  .n, .badge { width: 22px; height: 22px; border-radius: 99px; background: var(--ink); color: #fff; font: 700 11.5px/22px var(--doc-sans); text-align: center; flex: none; }
+  .anat { position: relative; margin-left: 40px; }
+  .badge { position: absolute; left: -40px; z-index: 3; }
+  .badge::after { content: ""; position: absolute; left: 30px; top: 11px; width: 10px; height: 1px; background: var(--ink-3); }
+  .legend { margin: 22px 0 0 40px; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 34px; }
+  .legend li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .legend li b { color: var(--ink); font-weight: 600; }
+  .step { margin-bottom: 44px; }
+  .step-head { display: grid; grid-template-columns: 250px 1fr; gap: 28px; margin-bottom: 14px; align-items: start; }
+  .step-head .sn { font: 500 11px/1.6 var(--doc-mono); letter-spacing: .18em; color: var(--accent-text); display: block; margin-bottom: 6px; }
+  .step-head h3 { font-family: var(--doc-display); font-size: 20px; font-weight: 600; letter-spacing: -.01em; margin: 0; line-height: 1.25; }
+  .step-head p { margin: 0; font-size: 15px; color: var(--ink-2); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  figure { margin: 0; }
+  figcaption { margin-top: 10px; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .tag { font: 500 10px/1.6 var(--doc-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 2px; }
+  table.data { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; background: var(--card); }
+  table.data th, table.data td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--hair); font-size: 14px; vertical-align: top; }
+  table.data td:first-child { width: 22%; color: var(--ink); font-weight: 500; }
+  table.data td { color: var(--ink-2); }
+  table.data th { font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+  table.data tr:last-child td { border-bottom: 0; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { border: 1px solid var(--hair); border-radius: 12px; padding: 18px 20px; background: var(--card); }
+  .card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .card p { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  .card p:last-child { margin-bottom: 0; }
+  .card.ask { border-color: #bef264; background: #f7fee7; }
+  code { font: 500 12.5px/1 var(--doc-mono); color: var(--ink); }
+  .refs { margin: 0; padding: 0; list-style: none; max-width: 90ch; }
+  .refs li { font-size: 14px; color: var(--ink-2); padding: 9px 0; border-bottom: 1px solid var(--hair); }
+  .refs li b { color: var(--ink); }
+  .refs a { color: var(--accent-text); }
+  .stage { background: #0d0f11; border-radius: 10px; padding: 28px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 24px; }
+
+  /* frames: part of the mock screen, scaled to the frame (data-x, data-y, data-s) */
+  .crop { position: relative; overflow: hidden; background: #000; }
+  .crop > .screen { position: absolute; transform-origin: 0 0; }
+
+  /* ═══ ON THE SCREEN: your KDE theme for the window, the text and the status colors (Breeze Dark with your accent,
+     ~/.config/kdeglobals; the build reads them from Kirigami.Theme at run time, so another theme
+     follows). Kept from our design: the shapes and sizes, the buttons and chips, the level scale, and Claude Code's orange
+     for Claude's hand. ═══ */
+  .screen, .app-theme {
+            /* Colors:View, Colors:Window, Colors:Button */
+            --bg: #141618; --bgSubtle: #1d1f22; --bgMuted: #292c30; --bgLift: #31363b;
+            --border: rgba(252,252,252,.15); --borderStrong: rgba(252,252,252,.3);
+            /* ForegroundNormal and ForegroundInactive; the third step is Inactive at 80% on the window, our own */
+            --fg: #fcfcfc; --fgMuted: #a1a9b1; --fgSubtle: #868c93;
+            /* ForegroundNeutral, Negative, Positive, and your accent (AccentColor 255,69,0). The accent stays KDE's own
+               (focus, selection); the hand badge is neutral, so orange means Claude's hand or, in a box, a warning */
+            --warning: #f67400; --error: #da4453; --success: #27ae60; --accent: #ff4500;
+            /* a dialog is the Window color with Breeze's frame (frameContrast 0.2) */
+            --panel: #202326; --panelHover: #292c30; --panelPick: #31363b; --pop: #202326; --popEdge: rgba(252,252,252,.2);
+            --hair: rgba(252,252,252,.1); --tint: rgba(252,252,252,.08);
+            --cc: #d77757; --claude: var(--cc);
+            /* Plasma's default fonts: Noto Sans 10 pt, Hack for fixed width */
+            --sans: "Noto Sans", sans-serif; --mono: "Hack", monospace; font-family: var(--sans); color: var(--fg); }
+  .screen { width: 3440px; height: 1440px; overflow: hidden; background: url(img/wall-main.jpg) center / cover; }
+  .abs { position: absolute; }
+  .kate { position: absolute; left: 2040px; top: 210px; width: 1260px; height: 840px; border-radius: 6px; box-shadow: 0 10px 30px -6px rgba(0,0,0,.55); }
+  .kate.dim { filter: none; }
+
+  /* the browser window (Chrome's dark frame, drawn plainly) and the page under test */
+  .browser { position: absolute; left: 200px; top: 160px; width: 1640px; height: 1060px; border-radius: 8px; overflow: visible; }
+  .browser > .in { position: absolute; inset: 0; border-radius: 8px; overflow: hidden; background: #111113; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 18px 40px -10px rgba(0,0,0,.6); }
+  .browser .tabs { height: 46px; background: #1f1f1f; display: flex; align-items: flex-end; padding: 0 10px; gap: 4px; }
+  .browser .tabs .t { height: 36px; width: 260px; border-radius: 10px 10px 0 0; background: #353535; display: flex; align-items: center; gap: 10px; padding: 0 14px; font: 400 14px/1 "Geist", sans-serif; color: #e8e8e8; }
+  .browser .tabs .t i { width: 16px; height: 16px; border-radius: 4px; background: #c8f22e; flex: none; }
+  .browser .tabs .t.off { background: transparent; color: #a8a8a8; }
+  .browser .tabs .t.off i { background: #5f6368; }
+  .browser .tabs .wc { margin-left: auto; align-self: center; display: flex; gap: 22px; padding-right: 8px; }
+  .browser .tabs .wc svg { width: 14px; height: 14px; stroke: #ddd; }
+  .browser .bar { height: 48px; background: #353535; display: flex; align-items: center; gap: 14px; padding: 0 14px; }
+  .browser .bar svg { width: 18px; height: 18px; stroke: #c4c4c4; flex: none; }
+  .browser .bar .url { flex: 1; height: 34px; border-radius: 999px; background: #282828; display: flex; align-items: center; padding: 0 16px; font: 400 15px/1 "Geist", sans-serif; color: #e8e8e8; }
+  .browser .bar .url span { color: #9a9a9a; }
+  .page { position: absolute; left: 0; right: 0; top: 94px; bottom: 0; background: #0a0a0a; display: grid; place-items: center; }
+  .signin { width: 420px; }
+  .signin .mk { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #c8f22e, #9be012); margin-bottom: 22px; }
+  .signin h4 { font: 600 26px/1.2 "Geist", sans-serif; margin: 0 0 6px; color: #fafafa; }
+  .signin p { font: 400 15px/1.5 "Geist", sans-serif; margin: 0 0 26px; color: #a1a1aa; }
+  .signin .lb { font: 500 13px/1 "Geist", sans-serif; color: #fafafa; margin: 0 0 8px; }
+  .signin .fld { height: 42px; border-radius: 8px; background: #111113; box-shadow: inset 0 0 0 1px #27272a; margin-bottom: 18px; display: flex; align-items: center; padding: 0 12px; font: 400 15px/1 "Geist", sans-serif; color: #fafafa; }
+  .signin .fld.focus { box-shadow: inset 0 0 0 1px #fafafa; }
+  .signin .fld .caret { width: 1.5px; height: 18px; background: #fafafa; margin-left: 1px; }
+  .signin .btn { height: 42px; border-radius: 8px; background: #fafafa; color: #0a0a0a; display: grid; place-items: center; font: 500 15px/1 "Geist", sans-serif; margin-top: 8px; }
+  .signin .err { margin-top: 16px; font: 400 14px/1.4 "Geist", sans-serif; color: #f87171; }
+
+  /* pointers: yours, and the label that rides it while Claude moves it */
+  .ptr { position: absolute; width: 26px; height: 26px; z-index: 30; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.6)); }
+  .ptr-tag { position: absolute; z-index: 30; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--claude); color: #0a0a0a; font: 600 12.5px/24px var(--sans); white-space: nowrap; }
+
+  /* ═══ THE REQUEST: the notice for a waiting session, composed around one sentence ═══
+     Two columns, as the UAC prompt and macOS alerts set their mark beside their words: on the left the app being
+     asked for, wearing a white hand ("waiting on you"); on the right, every word and button on one
+     left edge. Reading order: who, the request (the largest line), why (Claude's own words), how much (the scale),
+     the risk (only when there is one), the answer. */
+  .ask-card { width: 540px; padding: 22px 24px 20px; border-radius: 12px; background: var(--pop); box-shadow: inset 0 0 0 1px var(--popEdge), 0 24px 60px -12px rgba(0,0,0,.75);
+              font: 400 13px/1.55 var(--sans); color: var(--fg); position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 16px; }
+  /* front and center on the primary monitor, every screen dimmed behind it */
+  .screen .ask-card { position: absolute; left: 1450px; top: 533px; z-index: 20; }
+  .screen .dim { position: absolute; inset: 0; z-index: 19; background: rgba(0,0,0,.6); }
+  .ask-card .mark { position: relative; width: 48px; height: 48px; }
+  .ask-card .mark img { width: 48px; height: 48px; display: block; }
+  .ask-card .mark .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--tint); box-shadow: inset 0 0 0 1px var(--hair); }
+  .ask-card .mark .tile svg { width: 24px; height: 24px; fill: none; stroke: var(--fgMuted); }
+  .ask-card .mark .hand { position: absolute; right: -6px; bottom: -6px; width: 24px; height: 24px; border-radius: 99px; display: grid; place-items: center;
+                          background: var(--bgLift); box-shadow: 0 0 0 3px var(--pop), inset 0 0 0 1px var(--border); }
+  .ask-card .mark .hand svg { width: 14px; height: 14px; fill: none; stroke: var(--fg); }
+  .ask-card .who { font-size: 12px; line-height: 16px; color: var(--fgSubtle); }
+  .ask-card .who b { color: var(--fgMuted); font-weight: 500; }
+  .ask-card .ttl { margin-top: 3px; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.015em; }
+  .ask-card .why { margin-top: 8px; font-size: 13.5px; line-height: 21px; color: var(--fgMuted); text-wrap: pretty; }
+  .ask-card .terms { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--hair); }
+  /* how much: four steps, filled up to the one asked for, in that level's color */
+  .scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .scale i { height: 6px; border-radius: 3px; background: var(--bgLift); }
+  .scale i.on { background: var(--lv, var(--fgMuted)); }
+  .scale span { margin-top: 6px; font-size: 12px; line-height: 16px; color: var(--fgSubtle); }
+  .scale span.here { color: var(--lv, var(--fg)); }
+  .lv-see, .lv-arrange { --lv: var(--fgMuted); } .lv-control { --lv: var(--claude); } .lv-full { --lv: var(--error); }
+  .ask-card .terms > :first-child { margin-top: 0; }
+  .ask-card .means { margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--fg); }
+  .ask-card .means span { color: var(--fgSubtle); }
+  .ask-card .warn { margin-top: 12px; display: grid; grid-template-columns: 14px 1fr; gap: 10px; font-size: 13px; line-height: 20px; color: var(--fg); padding: 9px 12px; border-radius: 8px;
+                    background: color-mix(in srgb, var(--warning) 14%, transparent); }
+  .ask-card .warn svg { width: 14px; height: 14px; margin-top: 3px; stroke: var(--warning); fill: none; }
+  .ask-card .warn.hard { background: color-mix(in srgb, var(--error) 14%, transparent); }
+  .ask-card .warn.hard svg { stroke: var(--error); }
+  .kbd { font: 500 11px/1 var(--mono); color: var(--fgSubtle); }
+  .ask-card .ft { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+  .ask-card .ft .sp { flex: 1; }
+  /* buttons: primary, secondary (a tint and a hairline), quiet */
+  .eb { flex: none; height: 28px; border-radius: 6px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: 500 12px/1 var(--sans); position: relative; overflow: hidden; white-space: nowrap; }
+  .eb.lg { height: 32px; padding: 0 14px; border-radius: 7px; font-size: 13px; }
+  .eb.primary { background: var(--fg); color: var(--bg); }
+  .eb.primary.hover { background: var(--fgMuted); }
+  .eb.primary.wait { background: var(--tint); color: var(--fgSubtle); box-shadow: inset 0 0 0 1px var(--hair); }
+  .eb.primary.wait::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 45%; background: var(--fgMuted); }
+  .eb.outline { background: var(--tint); color: var(--fg); box-shadow: inset 0 0 0 1px var(--hair); }
+  .eb.outline.hover { background: var(--panelHover); }
+  .eb.ghost { color: var(--fgSubtle); }
+  .eb.ghost.hover { background: var(--panelHover); color: var(--fg); }
+  .eb svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+  .eb .kbd { color: inherit; opacity: .8; }
+
+
+  /* ═══ IN CONTROL: the corner notice, top right of the primary monitor, always in the same place ═══
+     The tag rides one window; this one never moves. It holds the one button that ends Claude's control,
+     with its key, so the mouse or the keyboard can end it. Drawn like the card: the theme's window color,
+     our button and dot. */
+  .ctl-note { position: absolute; right: 24px; top: 24px; width: max-content; max-width: 460px; z-index: 25; padding: 14px 14px 14px 22px; /* right gutter = bottom gutter */
+              border-radius: 54px 12px 12px 54px; /* left corners concentric with the marker: its 32 px radius + the 22 px gutter */
+              background: var(--pop); box-shadow: inset 0 0 0 1px var(--popEdge), 0 18px 40px -12px rgba(0,0,0,.7);
+              display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 24px; align-items: center; font: 400 13px/1.5 var(--sans); color: var(--fg); }
+  /* the marker: a 64 px disc beside the copy, centered on it; Claude's orange ring and core */
+  .ctl-note .dot { width: 64px; height: 64px; border-radius: 99px; position: relative; background: color-mix(in srgb, var(--claude) 18%, transparent);
+                   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--claude) 35%, transparent); }
+  .ctl-note .dot::after { content: ""; position: absolute; left: 20px; top: 20px; width: 24px; height: 24px; border-radius: 99px; background: var(--claude); }
+  .ctl-note.paused .dot { background: var(--tint); box-shadow: inset 0 0 0 1px var(--hair); }
+  .ctl-note.paused .dot::after { background: var(--fgSubtle); }
+  .ctl-note .t { font-size: 14px; line-height: 20px; font-weight: 600; }
+  .ctl-note .s { font-size: 12.5px; line-height: 18px; color: var(--fgSubtle); margin-top: 1px; }
+  .ctl-note .ft { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+
+  /* ═══ WHILE CLAUDE HOLDS IT: the frame and the tag above it ═══ */
+  .held { position: absolute; inset: -6px; border-radius: 12px; box-shadow: 0 0 0 3px var(--claude); pointer-events: none; z-index: 5; }
+  .held.paused { box-shadow: 0 0 0 3px color-mix(in srgb, var(--claude) 40%, transparent); }
+  .hold-tag { position: absolute; left: -6px; top: -50px; height: 36px; padding: 0 4px 0 12px; border-radius: 8px; background: var(--pop); box-shadow: inset 0 0 0 1px var(--popEdge), 0 10px 24px -8px rgba(0,0,0,.7);
+              display: inline-flex; align-items: center; gap: 10px; font: 400 12.5px/1 var(--sans); color: var(--fg); white-space: nowrap; z-index: 6; }
+  .hold-tag .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--claude); box-shadow: 0 0 0 4px color-mix(in srgb, var(--claude) 22%, transparent); flex: none; }
+  .hold-tag.paused .dot { background: var(--fgSubtle); box-shadow: none; }
+  .hold-tag b { font-weight: 500; }
+  .hold-tag .m { color: var(--fgSubtle); }
+  .hold-tag .sep { width: 1px; height: 18px; background: var(--hair); }
+
+  /* ═══ THE ACCESS LIST: the rail inks, from the tray icon on the (auto-hidden) bottom panel ═══ */
+  .panel { width: 1060px; height: 52px; border-radius: 12px; background: rgba(32,35,38,.92); box-shadow: inset 0 0 0 1px rgba(252,252,252,.12); display: flex; align-items: center; padding: 0 14px; gap: 14px; margin-top: 14px; }
+  .panel .grow { flex: 1; }
+  .panel .ti { width: 22px; height: 22px; stroke: #fcfcfc; fill: none; opacity: .85; }
+  .panel .ti.on { stroke: var(--claude); opacity: 1; }
+  .panel .clock { font: 400 13px/1.2 var(--sans); color: #fcfcfc; text-align: center; }
+  .tray-wrap { position: relative; width: 1060px; }
+  .pop { width: 420px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--popEdge), 0 24px 60px -12px rgba(0,0,0,.75); padding: 0 0 8px; margin-left: auto; margin-right: 40px; overflow: hidden; }
+  .pop .ph { height: 44px; padding: 0 8px 0 20px; display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; font-weight: 600; border-bottom: 1px solid var(--hair); }
+  .pop .ph span { font-size: 12px; font-weight: 400; color: var(--fgSubtle); padding-right: 12px; }
+  .pop .sh { padding: 14px 20px 8px; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: .9px; text-transform: uppercase; color: var(--fgSubtle); }
+  .pop .gr { display: grid; grid-template-columns: 28px 1fr auto; gap: 0 12px; align-items: center; margin: 0 8px 4px; padding: 11px 12px 12px; border-radius: 10px; }
+  .pop .gr .ai { width: 28px; height: 28px; grid-row: 1 / span 2; }
+  .pop .lvw { color: var(--lv); }
+  .pop .gr.hov { background: var(--panelHover); }
+  .pop .gr .ai.ic { display: grid; place-items: center; border-radius: 8px; background: var(--tint); box-shadow: inset 0 0 0 1px var(--hair); }
+  .pop .gr .ai.ic svg { width: 18px; height: 18px; fill: none; stroke: var(--fg); }
+  .newtag { display: inline-block; font: 600 11px/1 var(--doc-mono); letter-spacing: .04em; text-transform: uppercase; color: #3f6212; background: #ecfccb; border: 1px solid #bef264; border-radius: 999px; padding: 4px 8px; margin-left: 10px; vertical-align: 3px; }
+  .pop .gr .a { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 500; line-height: 20px; color: var(--fg); }
+  .pop .chip { display: inline-flex; align-items: center; padding: 0 6px; border-radius: 4px; background: var(--bgLift); font-size: 11px; line-height: 18px; font-weight: 500; color: var(--fgMuted); }
+  .pop .chip.ctl { background: color-mix(in srgb, var(--claude) 18%, transparent); color: var(--claude); }
+  .pop .gr .b { font-size: 12.5px; line-height: 20px; color: var(--fgSubtle); grid-column: 2; }
+  .pop .gr .eb { grid-row: 1 / span 2; grid-column: 3; }
+  .pop .log { padding: 0 20px 6px; }
+  .pop .log div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; font-size: 12.5px; line-height: 20px; color: var(--fgMuted); }
+  .pop .log div span:first-child { font-family: var(--mono); font-size: 12px; color: var(--fgSubtle); }
+  .pop .log div .r { color: var(--error); }
+  .pop .row { display: flex; align-items: center; gap: 8px; padding: 10px 12px 2px 12px; margin-top: 6px; border-top: 1px solid var(--hair); }
+  .pop .row .grow { flex: 1; }
+
+  /* Claude's own screen: a window on the session's desktop with a KWin session inside */
+  .nested { position: absolute; left: 200px; top: 160px; width: 1640px; height: 1060px; border-radius: 8px; overflow: hidden; background: #202326; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 18px 40px -10px rgba(0,0,0,.6); }
+  .nested .tb { height: 38px; display: flex; align-items: center; justify-content: center; font: 400 14px/1 var(--sans); color: #fcfcfc; background: #272c31; position: relative; }
+  .nested .tb .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--claude); margin-right: 10px; }
+  .nested .inner { position: absolute; left: 0; right: 0; top: 38px; bottom: 0; background: #1b1e20; }
+  .nested .inner .browser { left: 90px; top: 50px; width: 1460px; height: 900px; transform: none; }
+</style>
+</head>
+<body>
+<script src="app-match.js"></script>
+
+<header class="cover"><div class="wrap">
+  <p class="eyebrow">kwin-mcp-warden · Design proposal 1 · The consent prompt</p>
+  <h1>Claude asks before it touches your desktop</h1>
+  <p class="deck">kwin-mcp lets Claude see, move, click and type on your KDE desktop. kwin-mcp-warden keeps every one of those tools and adds a warden in front of them. Before Claude gets an app, you see a prompt that names who is asking, what for, what it would allow and for how long. While Claude has it, the window says so, your hands come first, and one key takes it all back.</p>
+  <div class="meta"><span>Base <b>isac322/kwin-mcp 1.0 (MIT)</b></span><span>Look <b>Your KDE theme, with our parts</b></span><span>Screen <b>Primary monitor</b></span><span>Date <b>November 14, 2026</b></span><span>Status <b>Mock, nothing built</b></span></div>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <div class="sec-head"><span class="kicker">What changes</span><h2>From silent access to a prompt you answer</h2>
+    <p>Today, any Claude session that loads kwin-mcp can click anywhere on your screen without asking. Its one guard, <code>--live-consent</code>, covers only closing a window. The warden sits between Claude's request and KWin, and nothing passes it without a grant you gave.</p></div>
+  <ul class="changes">
+    <li><span class="n">1</span><span><b>A prompt Claude can't answer.</b> The warden draws it, not Claude, and holds all of Claude's input while it's open. It opens front and center on your primary monitor and dims every screen behind it. Only a click allows.</span></li>
+    <li><span class="n">2</span><span><b>Grants per window, in four levels.</b> See, Arrange, Control, or Full desktop. Claude asks for the least it needs in one window, and the card names that window by its title and shows how much on a four-step scale. Claude sees nothing of any other window, not even the same app's.</span></li>
+    <li><span class="n">3</span><span><b>Visible while it lasts.</b> The window Claude controls has an orange frame and a tag with a Stop button. Your pointer carries a "Claude" label while Claude moves it.</span></li>
+    <li><span class="n">4</span><span><b>Your hands come first.</b> Click or press a key and Claude pauses. A nudged mouse pauses Claude only while it uses the pointer. It continues after 3 seconds without your input.</span></li>
+    <li><span class="n">5</span><span><b>Grants end.</b> Each grant ends when the session ends or after 1 hour, whichever comes first. Meta+Alt+Esc ends every grant at once, and so does the access list.</span></li>
+    <li><span class="n">6</span><span><b>Some things are never granted.</b> The warden's own prompt, password prompts and the lock screen can't be granted. Closing a window asks every time.</span></li>
+  </ul>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">The request</span><h2>One card, front and center</h2>
+    <p>Here, the Mail App session needs to test its sign-in page in your Chrome. The card opens in the middle of your primary monitor, and every screen dims behind it, as Windows does for its UAC prompt. While it's up, the warden holds the keyboard: no window behind it gets your keys, and no key answers it except Esc, which means Don't Allow. The card is drawn in your KDE theme (its window color, Noto Sans, its text and warning colors), with our own parts inside it, composed around one sentence: Claude asks to control a Google Chrome window.</p></div>
+  <div class="label"><b>Your screen</b> as the card arrives</div>
+  <div class="artifact crop app-match" style="width:1060px;height:444px" data-scene="ask" data-x="0" data-y="0" data-s="0.30814"></div>
+  <div class="gap"></div>
+  <div class="label"><b>The card</b> at full size, ready to answer</div>
+  <div class="anat">
+    <span class="badge" style="top:59px">1</span>
+    <span class="badge" style="top:109px">2</span>
+    <span class="badge" style="top:207px">3</span>
+    <span class="badge" style="top:290px">4</span>
+    <span class="badge" style="top:353px">5</span>
+    <div class="artifact crop app-match" style="width:1020px;height:426px" data-scene="ask-ready" data-x="1210" data-y="507" data-s="1"></div>
+  </div>
+  <ul class="legend">
+    <li><span class="n">1</span><span><b>Who wants what.</b> The app being asked for, in its own icon, wears a white hand on a gray disc, for "waiting on you". Your accent is orange, as are Claude's hand and KDE's warnings, so the badge stays neutral and says it by its shape. Above the request, the session and its desktop. The request itself is the largest line on the card, and its verb names the level: see, arrange, control, or control your whole desktop.</span></li>
+    <li><span class="n">2</span><span><b>Why, in Claude's own words.</b> Quoted, so it reads as Claude speaking. Required: a request without a reason is refused before it reaches you.</span></li>
+    <li><span class="n">3</span><span><b>How much.</b> Four steps, filled up to the one asked for, in that level's color: gray for See and Arrange, Claude's orange for Control, red for Full desktop. One line under it says what that means in this app.</span></li>
+    <li><span class="n">4</span><span><b>The risk, only when there is one.</b> Chrome is signed in to your accounts. Terminals and IDEs get "the same as running any command." This follows Anthropic's own computer-use prompt.</span></li>
+    <li><span class="n">5</span><span><b>The answer says how long.</b> "Allow for 1 Hour" puts the limit on the button you press, so it needs no line of its own. The grant also ends with the session. Go to Session shows you the session's desktop first. Only a click allows; Esc means Don't Allow. Unanswered after 2 minutes counts as Don't Allow.</span></li>
+  </ul>
+  <div class="gap"></div>
+  <div class="pair">
+    <figure><div class="artifact crop app-match" style="width:520px;height:140px" data-scene="ask-arrive" data-x="1431" data-y="793" data-s="0.9"></div>
+      <figcaption><b>1 · Arriving.</b> For the first second, Allow is gray with a filling line. Only a click allows, never a key.</figcaption></figure>
+    <figure><div class="artifact crop app-match" style="width:520px;height:140px" data-scene="ask-hover" data-x="1431" data-y="793" data-s="0.9"></div>
+      <figcaption><b>2 · Ready.</b> Both buttons answer to a click, here Allow under the pointer. Don't Allow tells Claude no and logs it. Claude may ask again with a smaller request.</figcaption></figure>
+  </div>
+</section>
+
+<section id="open-and-ask">
+  <div class="sec-head"><span class="kicker">Open and control <span class="newtag">New</span></span><h2>An app that isn't open: one card opens it and allows it</h2>
+    <p>Before any card, the warden checks what's open. If the app has a window on your desktop, the card asks for the level in that window, named by its title. If it isn't open, one card asks to open it and allow the level in its new window together. Allow does both; Don't Allow does neither. A card never asks about an app you can't see.</p></div>
+  <div class="stage app-match app-theme" id="openask" style="display:grid;grid-template-columns:repeat(2,540px);gap:24px;align-items:start;justify-content:center;zoom:0.91"></div>
+  <div class="gap"></div>
+  <ul class="legend">
+    <li><span class="n">1</span><span><b>Kate is open.</b> The card you know: control Kate, for 1 hour.</span></li>
+    <li><span class="n">2</span><span><b>Kate isn't open.</b> The title says both things, and the line under the reason says what Allow does first. The level, what it means and how long it lasts read as in the first card.</span></li>
+  </ul>
+  <div class="gap"></div>
+  <table class="data">
+    <tr><th>When Claude asks for an app</th><th>What happens</th></tr>
+    <tr><td>It's open</td><td>The usual card for the level. Nothing is opened.</td></tr>
+    <tr><td>It isn't open, and it's installed</td><td>One card: open it, and allow the level. On Allow, the warden opens it the way your app launcher does (its desktop entry), waits for its window, and the grant starts then.</td></tr>
+    <tr><td>Something else opens</td><td>If the window that appears isn't the app the card named, nothing is granted, and the log says so.</td></tr>
+    <tr><td>It isn't installed, or the name is unknown</td><td>No card. Claude is told to use an app id it can see.</td></tr>
+    <tr><td>Don't Allow, Esc, or no answer in 2 minutes</td><td>Nothing opens and nothing is granted.</td></tr>
+    <tr><td>Claude opens a command, not an app</td><td>Unchanged: <code>app_launch</code> with a command line asks on its own card each time, as in "The other asks".</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">While Claude has it</span><h2>The window says who has it</h2>
+    <p>Allowed. The Chrome window gets an orange frame, and a tag above it names the session and the time left, with a Stop button. The orange is Claude Code's own, the color your terminal already shows for Claude, so Claude's hand reads as Claude's at a glance. Your KDE accent keeps its own jobs, focus and selection. While Claude moves the pointer, a "Claude" label rides it.</p></div>
+  <div class="label"><b>Your screen</b> while Claude types in Google Chrome</div>
+  <div class="artifact crop app-match" style="width:1060px;height:444px" data-scene="held" data-x="0" data-y="0" data-s="0.30814"></div>
+  <div class="gap"></div>
+  <div class="label"><b>The tag and the pointer</b> up close</div>
+  <div class="artifact crop app-match" style="width:1060px;height:520px" data-scene="held" data-x="150" data-y="90" data-s="0.62"></div>
+</section>
+
+<section>
+  <div class="sec-head" id="incontrol"><span class="kicker">In control</span><h2>One place to stop it, always in the corner</h2>
+    <p>While any session controls anything on your screen, a notice sits in the top-right corner of your primary monitor: who is in control, of what, for how long, and one button that ends it, with its key beside it. The tag above a window can be covered or half off a screen, and Full desktop has no single window to frame; the corner never moves. Reaching for the button is your input, so Claude has already paused by the time you get there. Top right, because Plasma's notifications and your tray live bottom right.</p></div>
+  <div class="label"><b>Your screen</b> while Claude types in Google Chrome</div>
+  <div class="artifact crop app-match" style="width:1060px;height:444px" data-scene="held" data-x="0" data-y="0" data-s="0.30814"></div>
+  <div class="gap"></div>
+  <div class="trio">
+    <figure><div class="artifact crop app-match" style="width:340px;height:132px" data-scene="held" data-x="3024" data-y="12" data-s="0.83"></div>
+      <figcaption><b>Claude is in control.</b> A large orange marker, then the session, the app and the time left. End Control ends every grant, the same as Meta+Alt+Esc. It shows while any session can click or type on your screen.</figcaption></figure>
+    <figure><div class="artifact crop app-match" style="width:340px;height:132px" data-scene="paused" data-x="3024" data-y="12" data-s="0.83"></div>
+      <figcaption><b>You took the mouse.</b> The marker goes gray and the notice says why; Claude waits. Once you let go it counts down, "Claude continues in 2 s", like the tag. Click End Control instead to end it.</figcaption></figure>
+    <figure><div class="artifact crop app-match" style="width:340px;height:132px" data-scene="two" data-x="3024" data-y="12" data-s="0.83"></div>
+      <figcaption><b>Two sessions at once.</b> One notice for all of them, and End All Control ends every one. The access list still ends them one at a time.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">Your hands come first</span><h2>Click or type and Claude waits</h2>
+    <p>There is one pointer and one keyboard focus, and you both use them, so you take turns. A click or a key press from you pauses Claude at once, mid-action. Moving the mouse pauses Claude only while Claude is clicking, dragging or scrolling, so it never pulls the pointer out from under you (the fix for November 3). Claude's typing goes on under a nudged mouse, because a nudge can't send its keys anywhere else. Claude continues after 3 seconds without your input, and only once the window it holds has focus again.</p></div>
+  <div class="trio">
+    <figure><div class="artifact" style="width:340px"><div class="crop app-match" style="width:340px;height:44px" data-scene="held" data-x="182" data-y="92" data-s="0.62"></div><div class="crop app-match" style="width:340px;height:116px;border-top:1px solid #27272a" data-scene="held" data-x="860" data-y="640" data-s="0.62"></div></div>
+      <figcaption><b>Claude is working.</b> A bright dot on the tag, a full frame, and the label on the pointer as it types.</figcaption></figure>
+    <figure><div class="artifact" style="width:340px"><div class="crop app-match" style="width:340px;height:44px" data-scene="paused" data-x="182" data-y="92" data-s="0.62"></div><div class="crop app-match" style="width:340px;height:116px;border-top:1px solid #27272a" data-scene="paused" data-x="860" data-y="640" data-s="0.62"></div></div>
+      <figcaption><b>You click or press a key.</b> Claude stops mid-action. The frame fades, the label leaves the pointer, and the tag says why.</figcaption></figure>
+    <figure><div class="artifact" style="width:340px"><div class="crop app-match" style="width:340px;height:44px" data-scene="resume" data-x="182" data-y="92" data-s="0.62"></div><div class="crop app-match" style="width:340px;height:116px;border-top:1px solid #27272a" data-scene="resume" data-x="860" data-y="640" data-s="0.62"></div></div>
+      <figcaption><b>Three seconds without your input.</b> The tag counts down, then Claude continues. Click Stop to end it instead.</figcaption></figure>
+  </div>
+</section>
+
+<section id="accessibility">
+  <div class="sec-head"><span class="kicker">Accessibility <span class="newtag">New</span></span><h2>Claude types into the field, not at your focus</h2>
+    <p>Typing with keys goes wherever your keyboard focus is, and you share that focus with Claude. That's why Claude pauses when you click or type. There is a second way in. Through accessibility, the channel screen readers use, Claude can write straight into a text field in the app you allowed, even when its window is behind yours. Nothing moves, your focus stays where it is, and your typing stays yours. It works in Kate, Konsole, Dolphin and every KDE, Qt and GTK app. Chrome, apps built on it, and Firefox can't be written into this way, so there Claude keeps typing at your focus, with the pauses.</p>
+    <p>For apps already open on your desktop, it needs your desktop's accessibility switch. That switch is off on your desktop now. KDE has no plain switch for it in System Settings: its Screen Reader toggle starts Orca, which talks. So the warden flips the switch itself, and only after you allow it on a card.</p></div>
+  <div class="stage app-match app-theme" id="a11yask"></div>
+  <div class="gap"></div>
+  <ul class="legend">
+    <li><span class="n">1</span><span><b>Asked once, when it's first needed.</b> The first time Claude reads or writes a text field and the switch is off, this card asks. Claude still needs a grant for each app; this card only opens the channel. If you keep it off, Claude types at your focus as before, and doesn't ask again this session.</span></li>
+    <li><span class="n">2</span><span><b>What it means, in plain words.</b> Apps describe their windows and text fields to assistive tools. Nothing changes on screen.</span></li>
+    <li><span class="n">3</span><span><b>The risk.</b> While it's on, any program running as you can read what your apps show. That's true of every desktop with a screen reader on, and it's why the switch goes back off.</span></li>
+    <li><span class="n">4</span><span><b>How long, on the button.</b> "Turn On While Claude Works": it goes back off when Claude's last grant ends, on Meta+Alt+Esc, or from the access list.</span></li>
+  </ul>
+  <div class="gap"></div>
+  <table class="data">
+    <tr><th>What</th><th>What happens</th></tr>
+    <tr><td>KDE and Qt apps</td><td>Join the moment the switch turns on. Apps open right now, like your Kate, are covered without a restart.</td></tr>
+    <tr><td>GTK apps</td><td>Always describe themselves. Nothing changes.</td></tr>
+    <tr><td>Firefox</td><td>Shows its pages' fields, but drops text written this way (a Firefox bug, Mozilla 1861026). Claude types at your focus there.</td></tr>
+    <tr><td>Chrome, Electron apps</td><td>Show nothing inside their windows unless started with a flag or a screen reader running, and can't be written into this way even then. Claude types at your focus there.</td></tr>
+    <tr><td>Apps Claude opens itself</td><td>Get accessibility for themselves alone, so no card for the switch: nothing on your desktop changes. Opening the app still asks, as it does now.</td></tr>
+    <tr><td>When it goes back off</td><td>New apps stop joining. Apps that already joined stay readable until they restart (measured in Qt).</td></tr>
+    <tr><td>Your next login</td><td>Your desktop saves the switch, so it would stay on. The warden turns it back off itself: when the last grant ends, on the stop key, and the next time it starts, if a crash left it on.</td></tr>
+    <tr><td>If it was already on</td><td>Because you use a screen reader, or turned it on yourself: no card, and the warden never turns it off.</td></tr>
+  </table>
+  <div class="gap"></div>
+  <div class="label"><b>The access list</b> while the switch is on for Claude</div>
+  <div class="stage app-match" style="display:block;padding:28px 0 0"><div class="tray-wrap app-theme" id="a11ytray"></div></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">The other asks</span><h2>Some actions ask every time, and some are never allowed</h2>
+    <p>A grant covers a level of work in one window, with the dialogs and menus that open from it. Some actions are too final to cover in advance, so they get their own card each time. Some places are never handed over, whatever Claude asks.</p></div>
+  <div class="stage app-match" id="others" style="display:grid;grid-template-columns:repeat(2,490px);grid-auto-flow:column;grid-template-rows:auto auto"></div>
+  <div class="gap"></div>
+  <div class="cards">
+    <div class="card"><h4>Asks every time</h4><p>Closing a window, especially with unsaved work. Raw D-Bus calls (kwin-mcp's <code>dbus_call</code>, which can reach anything on your session bus). Reading or setting your clipboard. Opening an app Claude doesn't already have.</p></div>
+    <div class="card"><h4>Never granted</h4><p>The warden's own prompt and access list. Password prompts (system, KWallet, polkit). The lock screen. The warden's settings. Claude gets a plain refusal, the attempt is logged, and you see no card.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">The access list</span><h2>Everything Claude holds, and the way to end it</h2>
+    <p>The warden's icon in the system tray turns orange while any session holds a grant. Your bottom panel hides itself, so the frame on the window is the indicator you'll actually see. The list is where you review and end grants. Below the grants, the latest log lines. The full log is a plain file.</p></div>
+  <div class="stage app-match" style="display:block;padding:28px 0 0"><div class="tray-wrap app-theme" id="tray"></div></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">The levels</span><h2>Four levels, granted per window</h2>
+    <p>Claude asks for one level in one window of an app: the card names the app's window you used last that Claude doesn't hold yet, by its title, and Claude asks again for each other window. A window's grant covers its own dialogs and menus, and ends when the window closes. Each level includes the ones above it in this table. The prompt's lines come from this table.</p></div>
+  <table class="data">
+    <tr><th>Level</th><th>What Claude can do</th><th>kwin-mcp tools it opens</th></tr>
+    <tr><td>See</td><td>List the window with its title. Read its text through accessibility. Take pictures of it, with everything else blacked out.</td><td><code>window_list</code> (other windows aren't listed at all), <code>element_query</code>, <code>screen_capture</code> of that window</td></tr>
+    <tr><td>Arrange</td><td>Move, resize and focus the window, and send it to another desktop.</td><td><code>window_place</code>, <code>window_focus</code></td></tr>
+    <tr><td>Control</td><td>Click, type, scroll and touch inside the window only. Each event is checked against the window under the pointer or with focus, and refused when that isn't the granted window or one of its dialogs or menus.</td><td><code>pointer_*</code>, <code>keyboard_*</code>, <code>touch_*</code>, <code>element_act</code></td></tr>
+    <tr><td>Full desktop</td><td>Control of every window, except what is never granted. Its card uses the red warning. It never runs longer than the session, and caps at 30 minutes.</td><td>All of the above, on any window</td></tr>
+  </table>
+  <div class="gap"></div>
+  <table class="data">
+    <tr><th>Apps with a warning on their card</th><th>Warning</th></tr>
+    <tr><td>Konsole, Kate, VS Code, any terminal or IDE</td><td>"Same as running commands on this computer."</td></tr>
+    <tr><td>Dolphin</td><td>"Can open, move and delete any of your files."</td></tr>
+    <tr><td>System Settings</td><td>"Can change how this computer is set up."</td></tr>
+    <tr><td>Chrome, Firefox</td><td>"Signed in to your accounts. Claude could act as you on any site open in it."</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">Where Claude works</span><h2>Your screen, or a screen of Claude's own</h2>
+    <p>Real input goes to the screen you're looking at, so when Claude controls an app on your screen, you share the pointer and take turns. kwin-mcp can also start a separate desktop in a window on the session's own desktop, with its own pointer and keyboard, where nothing can reach yours. Either way, Claude asks first, with the same card.</p></div>
+  <div class="pair">
+    <figure><div class="artifact crop app-match" style="width:520px;height:218px" data-scene="held" data-x="0" data-y="0" data-s="0.15116"></div>
+      <figcaption><b>Your screen.</b> For apps you already have open and signed in, like your Chrome. Claude asks for the app, as above, and you take turns with the pointer.</figcaption></figure>
+    <figure><div class="artifact crop app-match" style="width:520px;height:218px" data-scene="nested" data-x="0" data-y="0" data-s="0.15116"></div>
+      <figcaption><b>Claude's own screen.</b> For apps Claude launches to test, like a fresh Chrome on localhost. Claude asks for the screen itself, with the card below. Once allowed, it works there without touching your pointer.</figcaption></figure>
+  </div>
+  <div class="gap"></div>
+  <div class="stage app-match app-theme" id="ownscreen"></div>
+  <div class="gap"></div>
+  <div class="card ask"><h4>Claude's own screen needs permission</h4><p>Claude shouldn't create its own virtual desktops unless it gets permission from the consent card. A screen of Claude's own is a grant like any other: same card, same time limit, listed in Claude's access, ended by Meta+Alt+Esc. Once you allow it, Claude may do its work there.</p></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">Building it</span><h2>What the fork adds, and how it gets checked</h2></div>
+  <table class="data">
+    <tr><th>Part</th><th>What it does</th></tr>
+    <tr><td>The warden</td><td>Sits in front of every kwin-mcp tool. Each call is checked against the grants, or opens a card and waits. A tool missing from the levels table is refused, so a new upstream tool is closed until it's placed.</td></tr>
+    <tr><td>The card and frame</td><td>A small Qt Quick overlay (layer shell) above every window on every screen: the dim on each one, the card in the middle of the primary monitor, which is read from KDE rather than named in the code. Its window color, text, font and warning colors come from your KDE theme through Kirigami.Theme at run time, so a different theme follows; the shapes, buttons, scale and Claude's orange are its own.</td></tr>
+    <tr><td>Your hands first</td><td>Watches for your input through KWin and holds Claude's queued events while you're active. Claude's own events come in through its own input connection, so KWin can tell them apart. That is not proven yet. A small test inside a nested KWin comes first, before anything else is built.</td></tr>
+    <tr><td>Settings</td><td>A plain file you can edit: maximum grant time, the pause time, the stop key, the warning list and the never list.</td></tr>
+    <tr><td>The log</td><td>One line per request and per answer, plus every refused event, in <code>~/.local/state/kwin-mcp-warden/log</code>.</td></tr>
+    <tr><td>Boundary tests</td><td>Each run inside a private nested KWin, never on your desktop. Each test tries to cross a limit from outside: a click on a window that wasn't granted, a click while a card is open, a key while you're typing, a tool not in the table, a grant past its hour. Each one is first proven to catch a planted fault.</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="sec-head"><span class="kicker">Sources</span><h2>Where each choice comes from</h2></div>
+  <ul class="refs">
+    <li><b>Anthropic, computer use in Claude Code</b>: per-app approval each session, warnings on apps that reach further, a stop key that is consumed so nothing can use it, one session at a time. <a href="https://code.claude.com/docs/en/computer-use">code.claude.com/docs/en/computer-use</a></li>
+    <li><b>Microsoft, how User Account Control works</b>: a prompt that the requesting program can't reach or answer. <a href="https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/how-it-works">learn.microsoft.com</a></li>
+    <li><b>OpenAI Operator</b>: hands back to you for sensitive steps and asks before final actions. <a href="https://openai.com/index/introducing-operator/">openai.com/index/introducing-operator</a></li>
+    <li><b>isac322/kwin-mcp</b>: the base, its tools, <code>--live-consent</code> on closing windows, and its nested session. <a href="https://github.com/isac322/kwin-mcp">github.com/isac322/kwin-mcp</a></li>
+    <li><b>ahmetadakli/kde-desktop-mcp</b>: per-app tiers, pausing when you type, a stop key. <a href="https://github.com/ahmetadakli/kde-desktop-mcp">github.com/ahmetadakli/kde-desktop-mcp</a></li>
+    <li><b>atassis/kde-mcp</b>: approval notices per app. <a href="https://github.com/atassis/kde-mcp">github.com/atassis/kde-mcp</a></li>
+    <li><b>Firefox's security delay</b> (<code>security.dialog_enable_delay</code>, 1000 ms by default): buttons on security dialogs stay off for a moment so a stray click can't accept them. This is the source for the 1-second wait on Allow. <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1440079">bugzilla.mozilla.org 1440079</a></li>
+    <li><b>Your KWin</b>: Meta+Shift+Esc already ends input capture. Correction, found while building: Meta+Esc is not free. Stock Plasma gives it to System Monitor so the stop key is Meta+Alt+Esc.</li>
+    <li><b>Your KDE theme</b>: Breeze Dark with your accent (<code>~/.config/kdeglobals</code>: Window, View and Button colors, ForegroundNormal and Inactive, Neutral and Negative, AccentColor 255,69,0), and Plasma's default fonts, Noto Sans and Hack.</li>
+    <li><b>An earlier notice design</b>: the parts we kept: the notice's anatomy, the button and chip shapes, the rail rows, Claude Code's orange, and this page's own look.</li>
+    <li><b>An earlier capture-consent card</b>: the first version of this card, its "asks for this picture" card.</li>
+  </ul>
+</section>
+
+</main>
+
+<script>
+const ico = {
+  desk: '<svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>',
+  ask: '<svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4"/><path d="M12 14.2v.1"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  move: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="11" rx="2"/><path d="M21 9v10H9"/></svg>',
+  click: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6 16 2.4-6.6L20 10z"/></svg>',
+  key: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
+  no: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  hand: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4a1.5 1.5 0 0 1 3 0v7m0-5.5a1.5 1.5 0 0 1 3 0V12m0-3a1.5 1.5 0 0 1 3 0v5a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.5-2.7L3.2 14.6a1.6 1.6 0 0 1 2.4-2.1L8 15"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  close: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  a11y: '<svg viewBox="0 0 24 24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="7.4" r="1.3"/><path d="M7.5 10.2l4.5 1 4.5-1M12 11.2v3.4l-2.2 4M12 14.6l2.2 4"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>',
+};
+const ptr = (x, y) => `<svg class="ptr" style="left:${x}px;top:${y}px" viewBox="0 0 26 26"><path d="M4 2l0 19 5-4.6 3.4 7.6 3.3-1.5-3.4-7.4 6.8-.4z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+
+// a level, as the scale shows it
+const LEVELS = [['see', 'See'], ['arrange', 'Arrange'], ['control', 'Control'], ['full', 'Full desktop']];
+const scale = lv => {
+  const n = LEVELS.findIndex(l => l[0] === lv);
+  return `<div class="scale lv-${lv}">${LEVELS.map((l, i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}${LEVELS.map((l, i) => `<span class="${i === n ? 'here' : ''}">${l[1]}</span>`).join('')}</div>`;
+};
+
+function askCard(o) {
+  const allow = `<span class="eb lg primary${o.state === 'arrive' ? ' wait' : o.state === 'hover' ? ' hover' : ''}">${o.allow || 'Allow'}</span>`;
+  const deny = `<span class="eb lg outline">${o.deny || "Don't Allow"}</span>`;
+  const mark = o.app ? `<img src="${o.app}" alt="">` : `<div class="tile">${ico[o.tile || 'desk']}</div>`;
+  return `<div class="ask-card" style="${o.style || ''}">
+    <div class="mark">${mark}${o.waiting === false ? '' : `<span class="hand">${ico.wait}</span>`}</div>
+    <div>
+      <div class="who">${o.who}</div>
+      <div class="ttl">${o.title}</div>
+      ${o.why ? `<div class="why">“${o.why}”</div>` : ''}
+      ${o.note ? `<div class="why">${o.note}</div>` : ''}
+      ${o.level || o.warn || o.means ? `<div class="terms">
+        ${o.level ? scale(o.level) : ''}
+        ${o.means ? `<div class="means">${o.means}</div>` : ''}
+        ${o.warn ? `<div class="warn${o.hard ? ' hard' : ''}">${ico.warn}<span>${o.warn}</span></div>` : ''}
+      </div>` : ''}
+      ${o.noButtons ? '' : `<div class="ft">${allow}${deny}<span class="sp"></span><span class="eb lg ghost">Go to Session</span></div>`}
+    </div>
+  </div>`;
+}
+
+const chromeAsk = state => askCard({
+  state, app: 'img/app-chrome.png', who: '<b>Mail App</b> · Desktop 4 · waiting on you',
+  title: 'Claude asks to control a Google Chrome window',
+  why: 'Test the sign-in page at localhost:3000: type a test address, press Sign in, and check that the error message reads right.',
+  level: 'control',
+  means: 'Claude can click and type in this Google Chrome window, “Sign in – Mail App”, and pauses while you use your mouse or keyboard. <span>Its own dialogs and menus too. Nothing else.</span>',
+  warn: 'Google Chrome is signed in to your accounts. Claude could act as you on any site open in it.',
+  allow: 'Allow for 1 Hour',
+});
+
+function browser(o = {}) {
+  return `<div class="browser" style="${o.style || ''}">
+    ${o.held ? `<div class="held${o.paused ? ' paused' : ''}"></div>${holdTag(o)}` : ''}
+    <div class="in">
+      <div class="tabs"><span class="t"><i></i>Sign in · Mail</span><span class="t off"><i></i>Design mock</span>
+        <span class="wc"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M5 12h14"/></svg><svg viewBox="0 0 24 24" stroke-width="2"><rect x="5" y="5" width="14" height="14"/></svg><svg viewBox="0 0 24 24" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+      <div class="bar"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>
+        <div class="url">localhost:3000<span>/sign-in</span></div></div>
+      <div class="page"><div class="signin"><div class="mk"></div><h4>Sign in to Mail</h4><p>Use the address you were invited with.</p>
+        <div class="lb">Email</div><div class="fld${o.typing ? ' focus' : ''}">${o.typing ? 'test@example.com<span class="caret"></span>' : ''}</div>
+        <div class="lb">Password</div><div class="fld"></div><div class="btn">Sign in</div></div></div>
+    </div></div>`;
+}
+function holdTag(o) {
+  const msg = o.paused ? `<span>Paused while you click or type</span>` : o.resume ? `<span>Claude continues in 2 s</span>` : `<span>Claude is controlling Google Chrome</span>`;
+  return `<div class="hold-tag${o.paused ? ' paused' : ''}"><span class="dot"></span>${msg}<span class="m">Mail App · 58 min left</span><span class="sep"></span><span class="eb outline">${ico.stop}Stop <span class="kbd">Meta+Alt+Esc</span></span></div>`;
+}
+
+function ctlNote(o = {}) {
+  const t = o.paused ? 'Paused while you click or type' : 'Claude is in control';
+  const sub = o.two ? '2 sessions · Google Chrome, Kate' : 'Mail App · Google Chrome · 58 min left';
+  const label = o.two ? 'End All Control' : 'End Control';
+  return `<div class="ctl-note${o.paused ? ' paused' : ''}"><span class="dot"></span><div><div class="t">${t}</div><div class="s">${sub}</div>
+    <div class="ft"><span class="eb lg outline">${ico.stop}${label} <span class="kbd">Meta+Alt+Esc</span></span></div></div></div>`;
+}
+
+const kate = '<img class="kate" src="img/win-kate.png" alt="">';
+const scenes = {
+  ask: () => browser() + kate + '<div class="dim"></div>' + chromeAsk('arrive') + ptr(2560, 560),
+  'ask-arrive': () => browser() + kate + '<div class="dim"></div>' + chromeAsk('arrive') + ptr(2560, 560),
+  'ask-ready': () => browser() + kate + '<div class="dim"></div>' + chromeAsk('ready') + ptr(2560, 560),
+  'ask-hover': () => browser() + kate + '<div class="dim"></div>' + chromeAsk('hover') + ptr(1648, 873),
+  held: () => browser({ held: true, typing: true }) + kate + ctlNote() + ptr(1120, 736) + '<span class="ptr-tag" style="left:1146px;top:760px">Claude</span>',
+  paused: () => browser({ held: true, paused: true, typing: true }) + kate + ctlNote({ paused: true }) + ptr(1310, 668),
+  resume: () => browser({ held: true, resume: true, typing: true }) + kate + ctlNote() + ptr(1310, 668),
+  two: () => browser({ held: true, typing: true }) + kate + ctlNote({ two: true }),
+  nested: () => `<div class="nested"><div class="tb"><span class="dot"></span>Claude's screen · Mail App · KWin session</div><div class="inner">${browser({ typing: true })}</div></div>` + kate + ptr(2560, 560),
+};
+
+document.querySelectorAll('.crop[data-scene]').forEach(c => {
+  const s = parseFloat(c.dataset.s), x = parseFloat(c.dataset.x), y = parseFloat(c.dataset.y);
+  const el = document.createElement('div');
+  el.className = 'screen';
+  el.style.cssText = `left:${-x * s}px;top:${-y * s}px;transform:scale(${s})`;
+  el.innerHTML = scenes[c.dataset.scene]();
+  c.append(el);
+});
+
+document.getElementById('others').classList.add('app-theme');
+document.getElementById('others').innerHTML =
+  askCard({ app: 'img/app-kate.svg', who: '<b>Website Redesign</b> · Desktop 2 · waiting on you', state: 'ready',
+    title: 'Claude asks to close a Kate window',
+    why: 'Close the scratch notes I opened for the release text.',
+    warn: 'release-notes.md has unsaved changes. Closing the window loses them.',
+    allow: 'Close It', deny: "Don't Close", style: 'width:490px' }) +
+  askCard({ tile: 'desk', who: '<b>Website Redesign</b> · Desktop 2 · waiting on you', state: 'ready',
+    title: 'Claude asks to control your whole desktop',
+    why: 'Drag windows between desktops in Overview to test the drop targets.',
+    level: 'full',
+    means: 'Click and type in every window, on every desktop. <span>Never password prompts or the lock screen.</span>',
+    warn: 'Includes your terminals: the same as running any command on this computer.', hard: true,
+    allow: 'Allow for 30 Minutes', style: 'width:490px;grid-column:2;grid-row:1 / span 2' }) +
+  `<div style="grid-column:1;grid-row:2;display:grid;gap:14px">
+     ${askCard({ tile: 'lock', waiting: false, noButtons: true, who: '<b>Website Redesign</b> · Desktop 2 · never granted',
+        title: 'Claude can\'t type in password prompts',
+        note: 'It asked to type in "Authentication Required" (polkit). The warden refused before you saw a card, and logged it.', style: 'width:490px' })}
+     <div style="font:400 12px/1.7 var(--mono);color:var(--fgSubtle);padding:0 4px">14:22:07 Website Redesign<br>keyboard_type → "Authentication Required" (polkit)<br><span style="color:var(--error)">refused before any card: never granted</span></div>
+   </div>`;
+
+document.getElementById('openask').innerHTML =
+  askCard({ app: 'img/app-kate.svg', who: '<b>Website Redesign</b> · Desktop 2 · waiting on you', state: 'ready',
+    title: 'Claude asks to control a Kate window',
+    why: 'Write the release notes into Kate while you keep working in Konsole.',
+    level: 'control',
+    means: 'Claude can click and type in this Kate window, “RELEASE-NOTES.md — Kate”, and pauses while you use your mouse or keyboard. <span>Its own dialogs and menus too. Nothing else.</span>',
+    allow: 'Allow for 1 Hour', style: 'width:540px' }) +
+  askCard({ app: 'img/app-kate.svg', who: '<b>Website Redesign</b> · Desktop 2 · waiting on you', state: 'ready',
+    title: 'Claude asks to open Kate and control its window',
+    why: 'Write the release notes into Kate while you keep working in Konsole.',
+    note: 'Kate isn\'t open. Allow opens a new Kate window first.',
+    level: 'control',
+    means: 'Claude can click and type in the new Kate window, and pauses while you use your mouse or keyboard. <span>Its own dialogs and menus too. Nothing else.</span>',
+    allow: 'Open and Allow for 1 Hour', style: 'width:540px' });
+
+document.getElementById('ownscreen').innerHTML = askCard({ tile: 'desk', who: '<b>Mail App</b> · Desktop 4 · waiting on you', state: 'ready',
+  title: 'Claude asks for a screen of its own',
+  why: 'Launch a fresh Chrome and test the sign-in page there, without touching your windows.',
+  means: 'A separate desktop in a window on Desktop 4, with its own pointer and keyboard. <span>Nothing of yours is inside it, and it closes when the grant ends.</span>',
+  allow: 'Allow for 1 Hour' });
+
+document.getElementById('a11yask').innerHTML = askCard({ tile: 'a11y', who: '<b>Website Redesign</b> · Desktop 2 · waiting on you', state: 'ready',
+  title: 'Claude asks to turn on accessibility',
+  why: 'Write the release notes into Kate while you keep working in Konsole.',
+  means: 'So Claude can read and type into text fields in the apps you allowed, without your keyboard focus. <span>Apps describe their windows to assistive tools, as they do for a screen reader. Nothing changes on screen.</span>',
+  warn: 'While it\'s on, any program running as you can read what your apps show.',
+  allow: 'Turn On While Claude Works', deny: 'Keep It Off' });
+
+document.getElementById('a11ytray').innerHTML = `
+  <div class="pop">
+    <div class="ph">Claude's access<span>1 grant</span></div>
+    <div class="sh">Grants</div>
+    <div class="gr"><img class="ai" src="img/app-kate.svg" alt=""><div class="a">Kate</div><div class="b">Website Redesign · <span class="lvw lv-control">Control</span> · 41 min left</div><span class="eb outline">End</span></div>
+    <div class="gr hov"><span class="ai ic">${ico.a11y}</span><div class="a">Accessibility</div><div class="b">On for Claude · turns off when the last grant ends</div><span class="eb outline">Turn Off</span></div>
+    <div class="sh">Latest</div>
+    <div class="log">
+      <div><span>16:02:11</span><span>Website Redesign: Kate, Control, allowed</span></div>
+      <div><span>16:02:30</span><span>Website Redesign: accessibility turned on</span></div>
+      <div><span>16:02:31</span><span>Website Redesign: wrote 412 characters in Kate</span></div>
+    </div>
+    <div class="row"><span class="eb ghost">Open Log</span><span class="grow"></span><span class="eb outline">${ico.stop}End All <span class="kbd">Meta+Alt+Esc</span></span></div>
+  </div>
+  <div class="panel"><span class="grow"></span>
+    <svg class="ti" viewBox="0 0 24 24" stroke-width="1.6"><path d="M3 9v6h4l5 4V5L7 9z"/></svg>
+    <svg class="ti" viewBox="0 0 24 24" stroke-width="1.6"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5v.01"/></svg>
+    <svg class="ti on" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5"/><path d="M12 16v.01"/></svg>
+    <span class="clock">4:02 PM</span></div>`;
+
+document.getElementById('tray').innerHTML = `
+  <div class="pop">
+    <div class="ph">Claude's access<span>2 grants</span></div>
+    <div class="sh">Grants</div>
+    <div class="gr hov"><img class="ai" src="img/app-chrome.png" alt=""><div class="a">Google Chrome</div><div class="b">Mail App · <span class="lvw lv-control">Control</span> · 58 min left</div><span class="eb outline">End</span></div>
+    <div class="gr"><img class="ai" src="img/app-kate.svg" alt=""><div class="a">Kate</div><div class="b">Website Redesign · <span class="lvw lv-see">See</span> · 12 min left</div><span class="eb outline">End</span></div>
+    <div class="sh">Latest</div>
+    <div class="log">
+      <div><span>14:31:40</span><span>Mail App: Google Chrome, Control, allowed</span></div>
+      <div><span>14:31:58</span><span>Mail App: typed 16 characters in Google Chrome</span></div>
+      <div><span>14:32:03</span><span>Mail App: paused, you pressed a key</span></div>
+      <div><span>14:22:07</span><span class="r">Website Redesign: polkit prompt, refused</span></div>
+    </div>
+    <div class="row"><span class="eb ghost">Open Log</span><span class="grow"></span><span class="eb outline">${ico.stop}End All <span class="kbd">Meta+Alt+Esc</span></span></div>
+  </div>
+  <div class="panel"><span class="grow"></span>
+    <svg class="ti" viewBox="0 0 24 24" stroke-width="1.6"><path d="M3 9v6h4l5 4V5L7 9z"/></svg>
+    <svg class="ti" viewBox="0 0 24 24" stroke-width="1.6"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5v.01"/></svg>
+    <svg class="ti on" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5"/><path d="M12 16v.01"/></svg>
+    <span class="clock">2:32 PM</span></div>`;
+</script>
+</body>
+</html>

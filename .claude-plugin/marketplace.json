@@ -1,21 +1,21 @@
 {
   "$schema": "https://claude.ai/schemas/marketplace.json",
-  "name": "kwin-mcp",
+  "name": "kwin-mcp-warden",
   "owner": {
     "name": "Byeonghoon Yoo",
     "email": "bhyoo@bhyoo.com",
     "url": "https://github.com/isac322"
   },
   "metadata": {
-    "description": "kwin-mcp marketplace \u2014 MCP server and skill for Linux KDE Plasma 6 Wayland desktop GUI automation (virtual sessions for headless testing, live sessions for real-desktop / container / kiosk control).",
-    "version": "1.0.0"
+    "description": "kwin-mcp-warden marketplace \u2014 kwin-mcp (KDE Plasma 6 Wayland desktop GUI automation) with a warden: Claude asks first through a consent card, access is granted one window at a time, and a stop key (Meta+Alt+Esc) ends it at once.",
+    "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "kwin-mcp",
+      "name": "kwin-mcp-warden",
       "source": "./integrations/claude-code",
-      "version": "1.0.0",
-      "description": "Bundles the kwin-mcp MCP server (uvx kwin-mcp) plus the kwin-desktop-automation skill that teaches session-mode selection, the observe-act-verify loop, element refs, US-QWERTY vs Unicode typing, held input, and platform pitfalls (global logical coordinates, QMenu invisibility, EIS edge limits, clipboard opt-in).",
+      "version": "0.1.0",
+      "description": "Bundles the kwin-mcp-warden MCP server (kwin-mcp with a warden: Claude asks first through a consent card, access is granted one window at a time, stop key Meta+Alt+Esc) plus the kwin-desktop-automation skill that teaches session-mode selection, the observe-act-verify loop, element refs, US-QWERTY vs Unicode typing, held input, and platform pitfalls (global logical coordinates, QMenu invisibility, EIS edge limits, clipboard opt-in).",
       "category": "automation",
       "keywords": [
         "mcp",
@@ -32,7 +32,8 @@
         "at-spi2",
         "libei",
         "headless-testing",
-        "live-desktop"
+        "live-desktop",
+        "consent"
       ],
       "license": "MIT",
       "homepage": "https://github.com/isac322/kwin-mcp",

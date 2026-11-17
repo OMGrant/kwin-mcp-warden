@@ -193,7 +193,12 @@ def test_no_di_params_in_input_schema(listing: dict[str, dict[str, Any]]) -> Non
         for _pointer, sub in walk(schema):
             for prop in sub.get("properties", {}):
                 assert not _DI_NAME.match(prop), (name, prop)
-    assert set(listing["window_close"]["inputSchema"]["properties"]) == {"window", "capture"}
+    # kwin-mcp-warden adds the optional ``reason`` the consent card shows.
+    assert set(listing["window_close"]["inputSchema"]["properties"]) == {
+        "window",
+        "capture",
+        "reason",
+    }
 
 
 def _union_pointers() -> set[tuple[str, str]]:
@@ -204,6 +209,8 @@ def _union_pointers() -> set[tuple[str, str]]:
         for end in ("from", "to")
     }
     allowed |= {("touch_pinch", "/properties/center"), ("element_act", "/properties/element")}
+    # kwin-mcp-warden: keyboard_type(into=ElementAddress) writes into a text field via AT-SPI.
+    allowed.add(("keyboard_type", "/properties/into"))
     allowed.add(("dbus_call", "/properties/args/items"))
     return allowed
 

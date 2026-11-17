@@ -1,10 +1,10 @@
-# @isac322/kwin-mcp-opencode
+# kwin-mcp-warden-opencode
 
-OpenCode plugin for [`kwin-mcp`](https://github.com/isac322/kwin-mcp) — the MCP server for Linux desktop GUI automation on KDE Plasma 6 Wayland.
+OpenCode plugin for `kwin-mcp-warden`: [`kwin-mcp`](https://github.com/isac322/kwin-mcp) (the MCP server for Linux desktop GUI automation on KDE Plasma 6 Wayland) with a warden in front of every tool. Claude asks first through a consent card, access is granted one window at a time, and the stop key (Meta+Alt+Esc) ends it at once.
 
 On every OpenCode backend startup the plugin's V2 `setup` hook:
 
-1. **Registers the `kwin-mcp` MCP server** through `ctx.mcp.transform`, equivalent to a static local server entry but without requiring users to edit config.
+1. **Registers the `kwin-mcp-warden` MCP server** through `ctx.mcp.transform`, equivalent to a static local server entry but without requiring users to edit config.
 2. **Registers the bundled skill** through `ctx.skill.transform`. The skill teaches which kwin-mcp tool to call when, plus the platform pitfalls of Wayland / AT-SPI2 / EIS.
 
 Both steps are idempotent — re-running OpenCode is a no-op. The plugin never copies files outside the npm package, so removing the plugin from the configured `plugins` list and reloading OpenCode removes both registrations from the active runtime config.
@@ -16,30 +16,19 @@ In your `opencode.json`:
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["@isac322/kwin-mcp-opencode"]
+  "plugins": ["kwin-mcp-warden-opencode"]
 }
 ```
 
 OpenCode resolves the npm package and runs the plugin on every startup.
 
-The plugin assumes [`uvx`](https://docs.astral.sh/uv/) is on your `PATH` and uses `uvx kwin-mcp` to launch the MCP server. Install `uv` first:
-
-```bash
-# Arch / Manjaro
-sudo pacman -S uv
-
-# Fedora
-sudo dnf install uv
-
-# Ubuntu / Debian
-# see https://docs.astral.sh/uv/getting-started/installation/
-```
+The plugin launches the MCP server with the bare command `kwin-mcp-warden`, so that command must be on your `PATH`. Run the fork's `install.sh` first; it installs `kwin-mcp-warden` and its consent card. The plugin never starts upstream's ungated `kwin-mcp`.
 
 You also need the kwin-mcp system dependencies (`kwin_wayland`, `at-spi2-core`, `spectacle`, `python-gobject`, `dbus-python`, optionally `wl-clipboard` and `wtype`). See [the kwin-mcp README](https://github.com/isac322/kwin-mcp#installing-system-dependencies) for distro-specific commands.
 
 ## Manual fallback
 
-If you do not want to install the plugin, configure the local `kwin-mcp` server through OpenCode's V2 MCP configuration and add the bundled skill through another V2 skill source.
+If you do not want to install the plugin, configure the local `kwin-mcp-warden` server through OpenCode's V2 MCP configuration and add the bundled skill through another V2 skill source.
 
 ## Bundled skill
 
@@ -64,11 +53,11 @@ The skill ID is the directory basename; frontmatter `name` is display-only. A sk
    }
    ```
 
-   If other plugins are configured, remove only `"@isac322/kwin-mcp-opencode"` (or the target you configured).
+   If other plugins are configured, remove only `"kwin-mcp-warden-opencode"` (or the target you configured).
 2. If the plugin is configured in OpenCode's global plugin configuration, remove it with:
 
    ```bash
-   opencode plugin remove @isac322/kwin-mcp-opencode
+   opencode plugin remove kwin-mcp-warden-opencode
    ```
 
    Use the exact configured target if it differs. This command edits the global plugin configuration; it does not delete the package cache. You do not need both steps—use the one that matches where the plugin is configured.

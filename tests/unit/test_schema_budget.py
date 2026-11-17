@@ -19,7 +19,9 @@ from kwin_mcp.server import build_server
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-V1_BUDGET = 9_510
+# kwin-mcp-warden raises upstream's 9_510 for keyboard_type(into=...), the AT-SPI text
+# route that needs no keyboard focus.
+V1_BUDGET = 9_700
 V2_BUDGET = 8_711
 _V1_KEYS = ("name", "title", "description", "inputSchema", "annotations")
 _V2_KEYS = ("name", "description", "inputSchema")

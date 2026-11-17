@@ -32,8 +32,8 @@ def test_live_consent_argv_parsing(argv: list[str], capsys: pytest.CaptureFixtur
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err.startswith("usage: kwin-mcp "), captured.err
-    assert "kwin-mcp: error: " in captured.err
+    assert captured.err.startswith("usage: kwin-mcp-warden "), captured.err
+    assert "kwin-mcp-warden: error: " in captured.err
 
 
 @pytest.mark.parametrize(
@@ -66,10 +66,17 @@ def test_build_server_applies_flags() -> None:
     assert built.flags == ServerFlags(screenshot_images=True, live_consent="refuse")
 
 
+def test_usage_names_the_renamed_command() -> None:
+    """``--help`` names the command the fork installs, like the argparse usage errors do."""
+    usage = server._USAGE
+    assert usage.startswith("usage: kwin-mcp-warden ")
+    assert "kwin-mcp-warden-cli" in usage
+
+
 def test_usage_lists_every_flag() -> None:
     """``_USAGE`` (printed by ``-h``/``--help``) documents the four flags and help itself."""
     usage = server._USAGE
-    assert usage.startswith("usage: kwin-mcp ")
+    assert usage.startswith("usage: kwin-mcp-warden ")
     for flag in (
         "-h, --help",
         "--default-live-session",
@@ -78,7 +85,10 @@ def test_usage_lists_every_flag() -> None:
         "--live-consent {elicit,refuse}",
     ):
         assert flag in usage, flag
-    assert usage.rstrip().endswith("Documentation: https://github.com/isac322/kwin-mcp#readme")
+    assert usage.rstrip().endswith(
+        "Documentation: README.md in the kwin-mcp-warden source (based on\n"
+        "https://github.com/isac322/kwin-mcp)"
+    )
     # The usage line names every flag the parser accepts.
     usage_line = usage.split("\n\n", 1)[0]
     assert re.findall(r"--[a-z-]+", usage_line) == [

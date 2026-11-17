@@ -42,6 +42,10 @@
      "LANG": "C",
      "QT_SCALE_FACTOR": "1"
     }
+   },
+   {
+    "command": "kate",
+    "reason": "open the notes the person asked about"
    }
   ],
   "app_log": [
@@ -216,6 +220,12 @@
       50
      ]
     }
+   },
+   {
+    "window": {
+     "id": "{k1}"
+    },
+    "reason": "close the finished dialog"
    }
   ],
   "pointer_click": [
@@ -572,7 +582,10 @@
    }
   ],
   "clipboard_read": [
-   {}
+   {},
+   {
+    "reason": "read the copied link"
+   }
   ],
   "clipboard_write": [
    {
@@ -580,6 +593,10 @@
    },
    {
     "text": "a\u0000b"
+   },
+   {
+    "text": "a",
+    "reason": "paste the answer"
    }
   ],
   "dbus_call": [
@@ -619,6 +636,13 @@
       }
      }
     ]
+   },
+   {
+    "service": "org.kde.KWin",
+    "path": "/KWin",
+    "interface": "org.kde.KWin",
+    "method": "reconfigure",
+    "reason": "reload the settings"
    }
   ],
   "wayland_list": [
@@ -626,6 +650,24 @@
    {
     "filter": "plasma"
    }
+  ],
+  "access_request": [
+   {
+    "level": "see",
+    "reason": "read the page",
+    "app": "google-chrome"
+   },
+   {
+    "level": "full_desktop",
+    "reason": "tidy every window"
+   },
+   {
+    "level": "own_screen",
+    "reason": "run a test session"
+   }
+  ],
+  "access_list": [
+   {}
   ]
  },
  "invalid": {
@@ -674,6 +716,10 @@
     "env": {
      "A": 1
     }
+   },
+   {
+    "command": "kate",
+    "reason": 1
    }
   ],
   "app_log": [
@@ -798,6 +844,14 @@
      "id": "w"
     },
     "capture": {}
+   },
+   {
+    "window": {
+     "id": "w"
+    },
+    "reason": [
+     "x"
+    ]
    }
   ],
   "pointer_click": [
@@ -937,7 +991,11 @@
    }
   ],
   "clipboard_write": [
-   {}
+   {},
+   {
+    "text": "a",
+    "reason": {}
+   }
   ],
   "dbus_call": [
    {
@@ -960,6 +1018,13 @@
     "interface": "a",
     "method": "m",
     "args": "string:x"
+   },
+   {
+    "service": "a.b",
+    "path": "/",
+    "interface": "a.b",
+    "method": "M",
+    "reason": 1
    }
   ],
   "wayland_list": [
@@ -968,6 +1033,38 @@
    },
    {
     "filter": 5
+   }
+  ],
+  "clipboard_read": [
+   {
+    "reason": 1
+   }
+  ],
+  "access_request": [
+   {},
+   {
+    "level": "see"
+   },
+   {
+    "reason": "why"
+   },
+   {
+    "level": "root",
+    "reason": "why"
+   },
+   {
+    "level": "see",
+    "reason": 1
+   },
+   {
+    "level": "see",
+    "reason": "why",
+    "app": 1
+   }
+  ],
+  "access_list": [
+   {
+    "level": "see"
    }
   ]
  }

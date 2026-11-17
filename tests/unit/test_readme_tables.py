@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tool_surface import REMOVED_TOOL_NAMES, TOOL_NAMES
+from tool_surface import ALL_TOOL_NAMES, REMOVED_TOOL_NAMES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "README.md"
@@ -99,11 +99,11 @@ def test_readme_tables_match_s_tools() -> None:
     rows = _tool_rows(_section(text, "Available Tools"))
     names = [name for name, _ in rows]
     assert len(names) == len(set(names)), "a tool is listed twice"
-    assert set(names) == set(TOOL_NAMES)
-    assert "29 MCP tools" in text
+    assert set(names) == set(ALL_TOOL_NAMES)
+    assert "31 MCP tools" in text
 
     expected = {tool["name"]: tool for tool in json.loads(S_TOOLS.read_text())["tools"]}
-    assert set(expected) == set(TOOL_NAMES)
+    assert set(expected) == set(ALL_TOOL_NAMES)
     for name, cell in rows:
         assert _documented_parameters(cell) == _expected_parameters(expected[name]), name
 
@@ -118,7 +118,7 @@ def test_readme_tables_match_s_tools() -> None:
 
     architecture = _section(text, "How It Works")
     assert "models.py" in architecture
-    assert "29 tools" in architecture
+    assert "31 tools" in architecture
 
 
 def test_readme_anchors_resolve() -> None:

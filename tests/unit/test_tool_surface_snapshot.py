@@ -88,11 +88,11 @@ def test_annotation_counts(listing: dict[str, dict[str, Any]]) -> None:
         _profile({hint: tool["annotations"][hint] for hint in _HINTS}) for tool in listing.values()
     )
     assert profiles == {
-        "RO": 8,
+        "RO": 9,
         "D": 11,
         "DI": 4,
         "NDI": 2,
-        "ND": 1,
+        "ND": 2,
         "ND+openWorld": 1,
         "D+openWorld": 2,
     }

@@ -521,7 +521,7 @@ def test_server_exit_releases_everything(live_probe: tuple[LiveKWin, LiveProbe])
             assert _count(events, "button_release", "left") == 1, events
             assert events[-1]["held_mods"] == "none", events[-5:]
             assert (
-                "kwin-mcp: exit cleanup: serialized session_stop path "
+                "kwin-mcp-warden: exit cleanup: serialized session_stop path "
                 "(completed on the tool thread)" in server.stderr_text()
             ), server.stderr_text()
         finally:

@@ -67,11 +67,11 @@ def test_baseline_diff_is_unchanged_and_passes_all_gates(
     report = surface_module.compute_diff(baseline, baseline)
 
     assert report["has_surface_changes"] is False
-    assert report["counts"] == {"added": 0, "removed": 0, "modified": 0, "unchanged": 29}
+    assert report["counts"] == {"added": 0, "removed": 0, "modified": 0, "unchanged": 31}
     assert report["collisions"] == []
     assert report["ad_hoc_violations"] == []
     assert report["gates_passed"] is True
-    assert len(report["cells"]) == 48
+    assert len(report["cells"]) == 52  # 13 domains (12 + kwin-mcp-warden access) x 4 modes
 
 
 @pytest.mark.qa("QA-SURF-024")
@@ -89,8 +89,11 @@ def test_added_tool_and_cell_collision_detected(
     assert any("screen" in collision for collision in collision_report["collisions"])
     assert collision_report["gates_passed"] is False
 
-    empty_cell_tool = _tool(baseline, "screen_capture")
+    # A small template: the fork's 31-tool listing leaves ~75 tokens of its 9700 budget, and
+    # this test is about the empty cell, not the budget (the budget has its own test below).
+    empty_cell_tool = _tool(baseline, "access_list")
     empty_cell_tool["name"] = "screen_record"
+    empty_cell_tool["description"] = "Record the screen."
     empty_cell_tool["annotations"]["readOnlyHint"] = False
     empty_report = surface_module.compute_diff(baseline, _with_tool(baseline, empty_cell_tool))
 
@@ -292,7 +295,7 @@ def test_render_markdown_and_html_outputs(
         r'<script[^>]+id=["\']grid-data["\'][^>]*>(.*?)</script>', rendered_html, re.DOTALL
     )
     assert grid_data is not None
-    assert json.loads(grid_data.group(1))["base_tool_count"] == 29
+    assert json.loads(grid_data.group(1))["base_tool_count"] == 31
     assert "<!--" not in grid_data.group(1)
     assert "10.222" not in rendered_html
     assert "cv.bhyoo.com" not in rendered_html
@@ -380,4 +383,4 @@ def test_cli_writes_html_markdown_and_json_files(
 
     monkeypatch.setattr(surface_module.subprocess, "run", fake_run)
     assert surface_module._load_tools("missing-base") == []
-    assert len(surface_module._load_tools("origin/main")) == 29
+    assert len(surface_module._load_tools("origin/main")) == 31

@@ -1,3 +1,68 @@
+# kwin-mcp-warden
+
+**An AI agent on your KDE desktop that asks first, sees only the window you allow, and stops when you touch your mouse.**
+
+kwin-mcp-warden is a fork of [kwin-mcp](https://github.com/isac322/kwin-mcp), the MCP server that lets AI agents such as Claude Code drive apps on KDE Plasma 6 Wayland. It keeps every kwin-mcp tool and puts a warden in front of all of them. On your live desktop, nothing an agent does gets through without a grant you gave on a consent card.
+
+<p align="center"><img src="docs/images/consent-card.png" width="560" alt="A consent card: Claude asks to control a Kate window, with its reason, a four-step level scale set to Control, and Allow for 1 Hour, Don't Allow and Go to Session buttons."></p>
+
+### What it does
+
+- **Asks before anything happens.** A card opens in the middle of your primary monitor and dims every screen behind it, like a Windows UAC prompt. It names the session asking, the window, the level of access and the agent's reason in its own words. Only a click on Allow grants it; Allow waits one second, so a stray click can't. Esc, or two minutes without an answer, means Don't Allow.
+- **One window at a time.** A grant covers one window and the dialogs and menus that open from it, never the app's other windows. The card names the window by its title. Everything else is blacked out of the agent's pictures and left out of its window list and its searches.
+- **Four levels.** See (pictures and text), Arrange (move, resize, focus), Control (click and type) and Full desktop (every window, 30 minutes at most). The agent asks for the least it needs.
+- **You come first.** While the agent has control, your mouse and keyboard pause it, even mid-word or mid-drag, and it continues a moment after you stop.
+- **Easy to stop.** Grants end after an hour, when the window closes, when the session ends, or at once with **Meta+Alt+Esc** or the End Control button. The tray icon lists every grant, with an End button for each.
+- **Never granted.** Password prompts, the lock screen, polkit and KWallet dialogs, and the warden's own windows are refused whatever the agent asks.
+- **A screen of its own.** An agent can ask for a private virtual desktop instead of yours, shown in a window, with its own pointer and keyboard. It closes when its grant ends.
+
+### In action
+
+The window the agent controls gets an orange frame and a tag naming the agent, the session and the time left. A notice in the corner says who is in control and holds the End Control button.
+
+![Claude controls a Kate window: an orange frame around it, a tag above it, and a "Claude is in control" notice in the top-right corner. KCharSelect is open beside it, not granted.](docs/images/in-control.png)
+
+At the same moment, this is the picture the agent gets. Only the granted window is in it. KCharSelect beside it, and anything else on screen, comes back black.
+
+![The same screen as the agent sees it: the Kate window, with everything else black.](docs/images/what-claude-sees.png)
+
+Move your mouse or press a key and the agent waits, counting down until it continues.
+
+![The tag and corner notice read "Claude continues in 1 s" after the person moved the mouse.](docs/images/paused.png)
+
+### Install
+
+Needs KDE Plasma 6 on Wayland, Python 3.12 or newer, PyGObject, dbus-python, Pillow and Qt 6's `qml` with Kirigami and layer-shell-qt, from your distribution's packages:
+
+- Fedora: `python3-gobject python3-dbus python3-pillow qt6-qtdeclarative layer-shell-qt kf6-kirigami`
+- Debian 13: `python3-gi python3-dbus python3-pil qml-qt6 qml6-module-org-kde-kirigami qml6-module-org-kde-layershell layer-shell-qt` and the Qt Quick modules listed in [docker/warden.Dockerfile](docker/warden.Dockerfile)
+
+To let the warden notice your mouse and keyboard, your user must be in the `input` group. Without it, agents can still see windows but can't arrange or control them.
+
+```bash
+git clone https://github.com/OMGrant/kwin-mcp-warden.git
+cd kwin-mcp-warden
+./install.sh
+```
+
+`install.sh` builds the package into its own environment in `~/.local/opt/kwin-mcp-warden` and registers the `kwin-mcp-warden` MCP server with Claude Code for your user. Run it again to update; `./uninstall.sh` takes it all back out. Other MCP clients can run `~/.local/opt/kwin-mcp-warden/bin/kwin-mcp-warden` over stdio.
+
+Settings live in `~/.config/kwin-mcp-warden/settings.toml`: grant lengths, the never-granted list and more. The file can make the warden stricter, never looser than its limits.
+
+### For agents
+
+An agent starts with `session_connect` for your desktop, then asks with `access_request(level, app, reason)`. Every other tool is refused until you allow it. `window_close`, `dbus_call`, `app_launch` and the clipboard tools ask you every time. The server's instructions tell agents all of this, so there is nothing to configure in the agent.
+
+### How it's checked
+
+Each limit above has a boundary test that tries to cross it from outside, in a private nested KWin with its own bus and display, never your desktop (`tests/warden/run.sh`). Each test is proven to catch a planted fault before its pass counts (`tests/warden/run.sh --plants`). The same tests run against an installed copy with a fresh home (`tests/warden/stranger.sh`) and as another user on Debian in a container (`tests/warden/container.sh`). What isn't done yet is listed in [docs/deferred.md](docs/deferred.md), and the design is in [design/mock/index.html](design/mock/index.html).
+
+### Credit and license
+
+kwin-mcp is by Byeonghoon Yoo and its contributors, under the MIT License, and so is this fork; see [LICENSE](LICENSE). Everything below this line is kwin-mcp's own README, kept for its full tool reference. The warden's two tools, `access_request` and `access_list`, are listed under [Consent](#consent-kwin-mcp-warden-2-tools).
+
+---
+
 # kwin-mcp
 
 **Model Context Protocol server for Linux desktop GUI automation on KDE Plasma 6 Wayland**
@@ -8,7 +73,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/isac322/kwin-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/isac322/kwin-mcp/actions/workflows/ci.yml)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (Claude Code, Cursor, and other MCP clients) to launch, interact with, and observe any Wayland application in an isolated virtual KWin session -- without affecting the user's desktop display or input. It also supports **live desktop automation** by connecting to an existing KWin session (real desktop or container) for collaborative workflows. With 29 MCP tools covering sessions, apps, screen capture, the AT-SPI2 accessibility tree, window management, mouse, keyboard, touch, clipboard, and D-Bus, kwin-mcp provides everything needed for end-to-end GUI testing and desktop automation on Linux.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (Claude Code, Cursor, and other MCP clients) to launch, interact with, and observe any Wayland application in an isolated virtual KWin session -- without affecting the user's desktop display or input. It also supports **live desktop automation** by connecting to an existing KWin session (real desktop or container) for collaborative workflows. With 31 MCP tools covering sessions, apps, screen capture, the AT-SPI2 accessibility tree, window management, mouse, keyboard, touch, clipboard, and D-Bus, kwin-mcp provides everything needed for end-to-end GUI testing and desktop automation on Linux.
 
 > [!IMPORTANT]
 > **kwin-mcp 1.0 renamed and reshaped the tools.** The 29 tools of 1.0 replace the 37 tools of 0.12, with shared argument types and structured output on every tool. A removed tool name returns an error that names its replacement. See [Migrating from 0.11](#migrating-from-011) (also covers 0.12).
@@ -49,7 +114,7 @@ Run end-to-end GUI tests for KDE/Qt/GTK applications in headless isolated sessio
 
 ### AI-Driven Desktop Automation
 
-Let AI agents like Claude Code autonomously operate desktop applications. The agent reads the accessibility tree to understand the UI, performs actions through 29 MCP tools, and observes the results via screenshots -- creating a complete feedback loop for any Wayland application.
+Let AI agents like Claude Code autonomously operate desktop applications. The agent reads the accessibility tree to understand the UI, performs actions through 31 MCP tools, and observes the results via screenshots -- creating a complete feedback loop for any Wayland application.
 
 ### Live Desktop Collaboration
 
@@ -291,7 +356,7 @@ Virtual sessions are unaffected: they close without asking (`consent: "not_requi
 
 ## Available Tools
 
-kwin-mcp registers 29 tools. Parameters are listed in schema order: a bare name is required, `name?=default` is optional with its default (JSON). Every coordinate, in and out, is a global logical pixel. The argument types (`Target`, `Locator`, `WindowSelector`, `Capture`, ...) are described in [Shared Argument Types](#shared-argument-types).
+kwin-mcp-warden registers 31 tools: the 29 tools of kwin-mcp 1.0 and the two consent tools access_request and access_list. Parameters are listed in schema order: a bare name is required, `name?=default` is optional with its default (JSON). Every coordinate, in and out, is a global logical pixel. The argument types (`Target`, `Locator`, `WindowSelector`, `Capture`, ...) are described in [Shared Argument Types](#shared-argument-types).
 
 ### Session Management (4 tools)
 
@@ -306,7 +371,7 @@ kwin-mcp registers 29 tools. Parameters are listed in schema order: a bare name 
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `app_launch` | `command`, `env?=null` | Launch a program in the session, split with `shlex` (no shell), in its own process group, with stdin closed. `env` adds environment variables for this process. stdout and stderr go to a log file read with `app_log`. An empty command, unbalanced quotes, or a NUL byte in the command or an env value is an error; an env name that is empty or contains `=` is also invalid. A failed launch keeps the session running; call `session_stop` to roll back. Returns `pid`, `log_path` and `log_uri`. |
+| `app_launch` | `command`, `env?=null`, `reason?=""` | Launch a program in the session, split with `shlex` (no shell), in its own process group, with stdin closed. `env` adds environment variables for this process. stdout and stderr go to a log file read with `app_log`. An empty command, unbalanced quotes, or a NUL byte in the command or an env value is an error; an env name that is empty or contains `=` is also invalid. A failed launch keeps the session running; call `session_stop` to roll back. Returns `pid`, `log_path` and `log_uri`. |
 | `app_log` | `pid`, `last_n_lines?=50` | Return the tail of the captured stdout/stderr of an app launched with `app_launch` (`session_info` lists the PIDs). `last_n_lines=0` returns the whole log. |
 
 ### Screen Capture (1 tool)
@@ -332,7 +397,7 @@ Element rectangles are screen-global logical coordinates only when AT-SPI report
 | `desktop_list` | _(none)_ | List KWin virtual desktops in pager order (`id`, `name`) with the current one marked. |
 | `window_focus` | `window`, `capture?=null` | Raise and activate exactly one window through KWin scripting (`workspace.activeWindow`). The result reports the window's observed state afterwards, or that it vanished. |
 | `window_place` | `window`, `frame?=null`, `desktop?=null`, `capture?=null` | Set the outer `frame` (any subset of `x`, `y`, `width`, `height`; omitted fields keep their value; signed 32-bit coordinates; width/height positive and at most the workspace size) and/or the virtual `desktop` (an id from `desktop_list`) of exactly one window, then read it back. KWin applies changes asynchronously, so fields it has not applied yet are listed as pending, and a window that vanished before the readback is reported as such, both as normal results. A desktop move that would also move related transient windows is refused with `nothing was changed`. |
-| `window_close` | `window`, `capture?=null` | Ask exactly one window to close, like its titlebar button; the app may refuse or keep it open behind a "save changes?" prompt, so confirm with `window_list`. On a live session the user must confirm first. An unconfirmed close, a window that cannot be closed, and an `{id}` that matches no window are non-error refusals reported in `refusal`. |
+| `window_close` | `window`, `capture?=null`, `reason?=""` | Ask exactly one window to close, like its titlebar button; the app may refuse or keep it open behind a "save changes?" prompt, so confirm with `window_list`. On a live session the user must confirm first. An unconfirmed close, a window that cannot be closed, and an `{id}` that matches no window are non-error refusals reported in `refusal`. |
 
 ### Mouse Input (5 tools)
 
@@ -349,7 +414,7 @@ Element rectangles are screen-global logical coordinates only when AT-SPI report
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `keyboard_press` | `keys`, `capture?=null` | Press and release one key or chord at the keyboard focus, e.g. `Return`, `ctrl+c`, `alt+F4`, `shift+ctrl+z`. Unknown key names are an error. |
-| `keyboard_type` | `text`, `method?="keys"`, `capture?=null` | Insert text at the keyboard focus. `method="keys"` sends per-key US-QWERTY events (letters, digits, ASCII punctuation, space, tab, newline) and rejects any other character before typing anything, with an error that says to retry with `method="unicode"`. `method="unicode"` types any text through `wtype`, or, when `wtype` is unavailable or unsupported, a private clipboard paste whose chord follows the focused window (Ctrl+Shift+V in terminals that paste on it, Ctrl+V elsewhere) and that restores the previous clipboard in every format afterwards; the result's `route` says which was used. Text echoes are capped at 200 characters. |
+| `keyboard_type` | `text`, `method?="keys"`, `into?=null`, `replace?=false`, `capture?=null` | Insert text at the keyboard focus. `method="keys"` sends per-key US-QWERTY events (letters, digits, ASCII punctuation, space, tab, newline) and rejects any other character before typing anything, with an error that says to retry with `method="unicode"`. `method="unicode"` types any text through `wtype`, or, when `wtype` is unavailable or unsupported, a private clipboard paste whose chord follows the focused window (Ctrl+Shift+V in terminals that paste on it, Ctrl+V elsewhere) and that restores the previous clipboard in every format afterwards; the result's `route` says which was used. Text echoes are capped at 200 characters. With `into` (a text field as `{ref}` or `{strict}` from `element_query`), the text is written into that field through AT-SPI EditableText at its caret instead: no keyboard focus, pointer or key events, any characters, and the window may be behind others (`route="accessibility"`). With `replace`, the text takes the place of everything in the field. Qt, KDE and GTK fields take it, in a window behind others or minimized (tested); Firefox implements the same interface but is untested; Chrome and Electron don't, so type into them at the focus. |
 | `keyboard_hold` | `phase`, `keys`, `capture?=null` | Press or release one key or chord across calls (modifiers first on press, reverse order on release), e.g. hold `ctrl` while clicking several items. `press` of an already held key sends no event; `release` is always sent. Held keys stay held until released, `session_stop` or server exit, and every result reports them. On a live desktop, release held input before ending your turn. |
 
 ### Touch Input (3 tools)
@@ -364,15 +429,24 @@ Element rectangles are screen-global logical coordinates only when AT-SPI report
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `clipboard_read` | _(none)_ | Return the session clipboard text (`wl-paste`) as `{text}`. Virtual sessions need `enable_clipboard=true` and `wl-clipboard`. A missing `wl-paste` or an empty or unreadable clipboard is an error. |
-| `clipboard_write` | `text` | Own the session clipboard with `text` (any size, including NUL characters) through `wl-copy`, waiting up to 5 s for ownership. Replaces the current selection. Same requirements as `clipboard_read`. The result echoes text of up to 200 characters; longer text is reported as its length. |
+| `clipboard_read` | `reason?=""` | Return the session clipboard text (`wl-paste`) as `{text}`. Virtual sessions need `enable_clipboard=true` and `wl-clipboard`. A missing `wl-paste` or an empty or unreadable clipboard is an error. |
+| `clipboard_write` | `text`, `reason?=""` | Own the session clipboard with `text` (any size, including NUL characters) through `wl-copy`, waiting up to 5 s for ownership. Replaces the current selection. Same requirements as `clipboard_read`. The result echoes text of up to 200 characters; longer text is reported as its length. |
 
 ### Escape Hatches (2 tools)
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `dbus_call` | `service`, `path`, `interface`, `method`, `args?=null` | Call any method on the session bus, in-process through dbus-python. The method's declared signature is introspected (Qt overloads supported). Each argument is a dbus-send string (`"int32:42"`, `"dict:string:variant:k,string:v"`) or a typed JSON object (`{"type": "int32", "value": 42}`, with `element_type` for containers), and the two forms mix. Malformed values and arguments that fit none of the declared signatures are errors and nothing is sent; a D-Bus error reply is an error too. Returns `{reply, signature}`. Prefer the dedicated tools. |
+| `dbus_call` | `service`, `path`, `interface`, `method`, `args?=null`, `reason?=""` | Call any method on the session bus, in-process through dbus-python. The method's declared signature is introspected (Qt overloads supported). Each argument is a dbus-send string (`"int32:42"`, `"dict:string:variant:k,string:v"`) or a typed JSON object (`{"type": "int32", "value": 42}`, with `element_type` for containers), and the two forms mix. Malformed values and arguments that fit none of the declared signatures are errors and nothing is sent; a D-Bus error reply is an error too. Returns `{reply, signature}`. Prefer the dedicated tools. |
 | `wayland_list` | `filter?=""` | List the Wayland protocol globals the compositor advertises (`wayland-info`): the raw lines containing `filter` (case-sensitive) and the parsed `globals` (`interface`, `version`, `name`). Useful for verifying protocol access such as `org_kde_plasma_window_management`. |
+
+### Consent (kwin-mcp-warden, 2 tools)
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `access_request` | `level`, `reason`, `app?=""` | Ask the person for access: a card on their primary monitor asks them, and the call waits for the answer (up to 2 minutes). `level` is the least you need: `see` (read and picture one window of an app, with its own dialogs and menus), `arrange` (move it), `control` (click and type in it), `full_desktop` (every window, 30 minutes at most), `own_screen` (a virtual session of your own, for `session_start`) or `accessibility` (the desktop's accessibility switch, which `keyboard_type(into=...)` needs for apps that were already open: asked once, only while another grant is held; it goes back off when the last grant ends, and a no holds for the session). `app` is the app's id or name (for example `google-chrome`, `org.kde.kate` or `kate`) and is needed for `see`, `arrange` and `control`. A grant is for one window: the card names the app's window the person used last that this session doesn't hold yet, by its title, and every other window stays out of pictures, `window_list` and `element_query`; ask again for another window. The grant ends when its window closes. If the app isn't open, the same card asks to open it: Allow opens it the way the app launcher does, and the grant starts once its new window appears, for that window (nothing is granted if it doesn't); an app that is neither open nor installed gets no card. Grants last 1 hour or until the session ends; the person can end them at any time. Returns `{allowed, text}`. |
+| `access_list` | _(none)_ | List the access this session holds now, with the time left on each grant, as `{grants}`. |
+
+On the live desktop every tool needs the person's go. `window_close`, `dbus_call`, `clipboard_read`, `clipboard_write` and `app_launch` ask every time and take an optional `reason`, a one-sentence explanation the person reads on the consent card.
 
 ### Output, Errors, Annotations, and Progress
 
@@ -426,7 +500,7 @@ Claude Code / AI Agent
        |
        | MCP (stdio)
        v
-kwin-mcp server (29 tools)          kwin-mcp-cli (interactive REPL)
+kwin-mcp server (31 tools)          kwin-mcp-cli (interactive REPL)
   server.py: schemas, gates,          cli.py: key=value / JSON args
   consent, resources                       |
        +--------- both delegate to AutomationEngine (core.py) ---------+
@@ -723,7 +797,7 @@ Coverage of the Docker suite includes:
 - a KWin bus-name readiness regression whose `kwin_wayland` stub creates the Wayland socket before starting the real compositor: `session_start` must wait until `org.kde.KWin` has an owner before it sets up EIS input, and must fail with a clear error when KWin exits first or never takes the name;
 - an accessibility-bus check that `org.a11y.Bus` has an owner as soon as `session_start` returns, before any app or AT-SPI2 query could activate it, and that a failed activation (a `dbus-send` stub on `PATH`) is reported as a `Warning:` line in the `session_start` output;
 - the `org.a11y.Status.IsEnabled` switch: on in virtual sessions, and in live sessions reported, left off by default, switched on by `enable_accessibility=true`, and restored by `session_stop` and by a server exit while a tool is still running;
-- exact input- and output-schema checks for all 29 registered tools, plus installed-server stdio calls through every MCP tool, resource and the live-consent elicitation flow;
+- exact input- and output-schema checks for all 31 registered tools, plus installed-server stdio calls through every MCP tool, resource and the live-consent elicitation flow;
 - version-aware visual tests that use Xvfb/scrot on KWin 6.3 and 6.7, and private `--virtual` ScreenShot2 capture with `/dev/udmabuf` on KWin 6.8 and later;
 - KCalc before/after pixel transitions and a deterministic GUI probe for mouse hover, cursor inclusion, animation frame bursts, and CJK text rendered differently from a missing-glyph tofu control;
 - screenshot coordinate mapping at output scales 1.0 and 1.45 (the fractional scale is set through `kscreen-doctor`): a probe button found by pixel color in the screenshot is clicked at origin plus pixel and must activate, and single captures and frame bursts report the logical workspace as their coordinate space;

@@ -4,15 +4,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const rootPlugin = (await import("@isac322/kwin-mcp-opencode")).default;
-const serverPlugin = (await import("@isac322/kwin-mcp-opencode/server")).default;
+const rootPlugin = (await import("kwin-mcp-warden-opencode")).default;
+const serverPlugin = (await import("kwin-mcp-warden-opencode/server")).default;
 
 for (const [name, plugin] of [
   ["root", rootPlugin],
   ["/server", serverPlugin],
 ]) {
   assert.equal(typeof plugin, "object", `${name} export must be an object`);
-  assert.equal(plugin.id, "kwin-mcp-opencode", `${name} export must have the plugin id`);
+  assert.equal(plugin.id, "kwin-mcp-warden-opencode", `${name} export must have the plugin id`);
   assert.equal(typeof plugin.setup, "function", `${name} export must expose setup`);
 }
 assert.equal(rootPlugin.id, serverPlugin.id);
@@ -46,10 +46,11 @@ async function assertRegistration(plugin) {
   await plugin.setup(createContext(mcp, skills));
 
   assert.deepEqual(mcp.get("user-server"), { type: "local", command: ["user-tool"] });
-  const config = mcp.get("kwin-mcp");
-  assert.deepEqual(config, { type: "local", command: ["uvx", "kwin-mcp"] });
+  const config = mcp.get("kwin-mcp-warden");
+  assert.deepEqual(config, { type: "local", command: ["kwin-mcp-warden"] });
   assert.equal(config.type, "local");
-  assert.deepEqual(config.command, ["uvx", "kwin-mcp"]);
+  assert.deepEqual(config.command, ["kwin-mcp-warden"]);
+  assert.ok(!config.command.includes("uvx"), "must never launch upstream kwin-mcp through uvx");
   assert.equal("enabled" in config, false);
   assert.deepEqual(Object.keys(config).sort(), ["command", "type"]);
   assert.equal(mcp.size, 2);
@@ -75,13 +76,13 @@ async function assertSameIdPreservation(plugin) {
     path: "/tmp/user-configured/SKILL.md",
     content: "User-provided skill",
   };
-  const mcp = new Map([["kwin-mcp", existingMcp]]);
+  const mcp = new Map([["kwin-mcp-warden", existingMcp]]);
   const skills = new Map([["kwin-desktop-automation", existingSkill]]);
 
   await plugin.setup(createContext(mcp, skills));
   await plugin.setup(createContext(mcp, skills));
 
-  assert.deepEqual(mcp.get("kwin-mcp"), existingMcp);
+  assert.deepEqual(mcp.get("kwin-mcp-warden"), existingMcp);
   assert.deepEqual(skills.get("kwin-desktop-automation"), existingSkill);
   assert.equal(mcp.size, 1);
   assert.equal(skills.size, 1);
@@ -115,7 +116,7 @@ try {
     }),
   );
 
-  assert.deepEqual(mcp.get("kwin-mcp"), { type: "local", command: ["uvx", "kwin-mcp"] });
+  assert.deepEqual(mcp.get("kwin-mcp-warden"), { type: "local", command: ["kwin-mcp-warden"] });
   assert.equal(skillTransformCalls, 0);
   assert.equal(skills.size, 0);
 } finally {

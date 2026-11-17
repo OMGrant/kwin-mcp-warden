@@ -1,7 +1,7 @@
 {
-  "name": "@isac322/kwin-mcp-opencode",
-  "version": "1.0.0",
-  "description": "OpenCode plugin for kwin-mcp \u2014 auto-registers the kwin-mcp MCP server (uvx kwin-mcp) and ships the kwin-desktop-automation skill on backend startup.",
+  "name": "kwin-mcp-warden-opencode",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for kwin-mcp-warden (kwin-mcp with a warden: asks first through a consent card, per-app grants, stop key Meta+Alt+Esc) \u2014 auto-registers the kwin-mcp-warden MCP server and ships the kwin-desktop-automation skill on backend startup.",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -49,7 +49,8 @@
     "linux-desktop",
     "ai-agents",
     "accessibility",
-    "at-spi2"
+    "at-spi2",
+    "consent"
   ],
   "license": "MIT",
   "author": "Byeonghoon Yoo <bhyoo@bhyoo.com>",

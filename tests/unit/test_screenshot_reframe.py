@@ -361,8 +361,8 @@ def _assert_usage_error(argv: list[str], message: str, capsys: pytest.CaptureFix
         server._parse_argv(argv)
     assert exc_info.value.code == 2
     stderr = capsys.readouterr().err
-    assert stderr.startswith("usage: kwin-mcp "), stderr
-    assert "kwin-mcp: error: " in stderr, stderr
+    assert stderr.startswith("usage: kwin-mcp-warden "), stderr
+    assert "kwin-mcp-warden: error: " in stderr, stderr
     assert message in stderr, stderr
     assert "Traceback" not in stderr, stderr
 

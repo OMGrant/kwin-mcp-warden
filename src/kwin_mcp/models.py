@@ -903,6 +903,10 @@ class KeyboardTypeResult(ActionResult):
     echo: str
 
     def summary(self) -> str:
+        if self.route == "accessibility":
+            element = self.element
+            where = "" if element is None else f' into [{element.role}] "{element.name}"'
+            return f"Wrote{where}: {self.echo}\nRoute: accessibility; {self.chars} characters"
         prefix = "Typed unicode" if self.method == "unicode" else "Typed"
         return f"{prefix}: {self.echo}\nRoute: {self.route}; {self.chars} characters"
 

@@ -20,6 +20,7 @@ names its ``Atspi.Accessible`` in this worker's LRU ref table.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -818,6 +819,167 @@ def invoke_action(address: dict[str, Any], action_name: str | Sequence[str]) -> 
     return result
 
 
+def _editable(accessible: Atspi.Accessible) -> bool:
+    try:
+        return accessible.get_editable_text_iface() is not None
+    except Exception:
+        return False
+
+
+def _no_write_target(locator: Locator, desc: str) -> str:
+    """Why nothing ``locator`` names can be written to, in the words that help next.
+
+    Chromium (Chrome and Electron apps) has no AT-SPI EditableText: its fields show the
+    state 'editable' but their text can't be set (ui/accessibility/platform/
+    ax_platform_node_auralinux.cc). On Linux it also leaves its windows empty unless it
+    was started with --force-renderer-accessibility or the Orca screen reader runs
+    (content/browser/accessibility/browser_accessibility_state_impl_auralinux.cc).
+    """
+    matching = _walk(_Criteria.from_locator(locator), 15)
+    unwritable = [item for item in matching if "editable" in item.info.states]
+    if unwritable:
+        return (
+            f"{len(unwritable)} text field(s) match {desc}, but their app doesn't let text be "
+            "written over AT-SPI (Chrome and Electron apps don't). Click the field, then "
+            "keyboard_type without into."
+        )
+    windows = [
+        item
+        for item in _walk(_Criteria.from_locator(Locator(app=locator.app)), 1)
+        if item.info.depth == 1
+    ]
+    if locator.app and windows and not any(_children(item.entry.accessible) for item in windows):
+        return (
+            f"No editable text element matches {desc}: the app shows its windows to "
+            "accessibility but nothing inside them. Chrome and Electron apps fill them in only "
+            "when started with --force-renderer-accessibility or while the Orca screen reader "
+            "runs, and even then their text can't be written over AT-SPI. Click the field, "
+            "then keyboard_type without into."
+        )
+    return (
+        f"No editable text element matches {desc}. Check the locator with "
+        "element_query (text fields have the state 'editable')."
+    )
+
+
+def _write_target(address: dict[str, Any]) -> tuple[_RefEntry, ElementInfo]:
+    """The one editable text element ``{ref}`` or ``{strict: locator}`` names."""
+    if "ref" in address:
+        ref = str(address["ref"])
+    else:
+        locator = Locator.model_validate(address.get("strict") or {})
+        found = [
+            item
+            for item in _walk(_Criteria.from_locator(locator), 15)
+            if _editable(item.entry.accessible)
+        ]
+        desc = locator.describe()
+        if not found:
+            raise _ActionRefusedError(_no_write_target(locator, desc))
+        if len(found) > 1:
+            listed = "; ".join(
+                f'[{item.entry.role}] "{item.info.name}" ({_mint(item)["ref"]})' for item in found
+            )
+            msg = (
+                f"Refused ambiguous write: {len(found)} editable elements match {desc}: "
+                f"{listed}\nNarrow the locator or write to one ref."
+            )
+            raise _ActionRefusedError(msg)
+        ref = str(_mint(found[0])["ref"])
+    resolved = _resolve_refs([ref])[0]
+    if resolved.entry is None or resolved.info is None:
+        raise _ActionRefusedError(resolved.error)
+    if not _editable(resolved.entry.accessible):
+        info = resolved.info
+        msg = (
+            f'Element {ref} [{info.role}] "{info.name}" isn\'t editable text over AT-SPI '
+            "(Chrome and Electron apps never are); type into it with keyboard_type instead."
+        )
+        raise _ActionRefusedError(msg)
+    return resolved.entry, resolved.info
+
+
+def _replace_text(editable: Any, reader: Any, text: str, length: int) -> bool:
+    """Replace all of a field's text: SetTextContents, else delete it all and insert."""
+    with contextlib.suppress(Exception):
+        if Atspi.EditableText.set_text_contents(editable, text) and (
+            reader is None or _all_text(reader) == text
+        ):
+            return True
+    count = int(Atspi.Text.get_character_count(reader)) if reader is not None else 0
+    if count and not Atspi.EditableText.delete_text(editable, 0, count):
+        return False
+    return bool(Atspi.EditableText.insert_text(editable, 0, text, length))
+
+
+def _all_text(reader: Any) -> str:
+    # Some editors (Kate) end a document with a newline of their own.
+    return (Atspi.Text.get_text(reader, 0, -1) or "").removesuffix("\n")
+
+
+def write_text(address: dict[str, Any], text: str, *, replace: bool = False) -> dict[str, Any]:
+    """Write ``text`` into one editable element through AT-SPI EditableText.
+
+    No keyboard focus, pointer or key events are involved, so it works on a window
+    behind others or minimized. The text goes in at the element's caret (its end when it
+    has none) and the caret moves past it; with ``replace`` it takes the place of all the
+    field's text. The text is read back afterwards: ``verified`` says whether it is there.
+    """
+    entry, info = _write_target(address)
+    accessible = entry.accessible
+    editable = accessible.get_editable_text_iface()
+    reader = accessible.get_text_iface()
+    result: dict[str, Any] = {"element": asdict(info), "chars": len(text), "replace": replace}
+    # Lengths and offsets: Qt counts UTF-16 units (atspiadaptor.cpp InsertText resizes
+    # the text to the length given, padding with garbage if it's longer); libatspi and
+    # GTK count the length in bytes and offsets in characters.
+    toolkit = ""
+    with contextlib.suppress(Exception):
+        toolkit = (entry.application.get_toolkit_name() or "").lower()
+    if toolkit.startswith("qt"):
+        length = advance = len(text.encode("utf-16-le")) // 2
+    else:
+        length, advance = len(text.encode("utf-8")), len(text)
+    if replace:
+        try:
+            ok = _replace_text(editable, reader, text, length)
+        except Exception as exc:
+            result["written"] = None
+            result["error"] = str(exc)
+            return result
+        result["written"] = ok
+        verified = False
+        if reader is not None:
+            with contextlib.suppress(Exception):
+                verified = _all_text(reader) == text
+        result["verified"] = verified
+        return result
+    try:
+        at = -1
+        if reader is not None:
+            with contextlib.suppress(Exception):
+                at = int(Atspi.Text.get_caret_offset(reader))
+            if at < 0:
+                with contextlib.suppress(Exception):
+                    at = int(Atspi.Text.get_character_count(reader))
+        at = max(at, 0)
+        ok = bool(Atspi.EditableText.insert_text(editable, at, text, length))
+        if ok and reader is not None:
+            with contextlib.suppress(Exception):
+                Atspi.Text.set_caret_offset(reader, at + advance)
+    except Exception as exc:
+        result["written"] = None
+        result["error"] = str(exc)
+        return result
+    result["written"] = ok
+    verified = False
+    if reader is not None:
+        with contextlib.suppress(Exception):
+            verified = text in (Atspi.Text.get_text(reader, 0, -1) or "")
+    result["verified"] = verified
+    return result
+
+
 def _finalize(info: ElementInfo, mapping: _WindowMapping) -> ElementInfo:
     """Turn window-local extents into screen coordinates, or mark unavailable.
 
@@ -1290,6 +1452,14 @@ def _dispatch_request(request: dict[str, Any]) -> dict[str, Any]:
 
     if op == "resolve":
         return {"ok": True, "result": resolve_refs([str(ref) for ref in request.get("refs", [])])}
+
+    if op == "write":
+        result = write_text(
+            dict(request.get("address") or {}),
+            str(request.get("text", "")),
+            replace=bool(request.get("replace")),
+        )
+        return {"ok": True, "result": result}
 
     if op == "action":
         result = invoke_action(dict(request.get("address") or {}), request.get("action_name", ""))

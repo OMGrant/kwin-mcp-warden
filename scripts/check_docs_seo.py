@@ -104,7 +104,7 @@ SKILL_MIRRORS: list[str] = [
     "integrations/opencode/plugin/skill/kwin-desktop-automation/SKILL.md",
 ]
 
-TOOL_COUNT_CANONICAL = 29
+TOOL_COUNT_CANONICAL = 31
 SERVER_PY = "src/kwin_mcp/server.py"
 
 # Files that state the tool count, with the phrase each must contain. Every other

@@ -34,7 +34,7 @@ from kwin_mcp.clipboard import MAX_COPY_BYTES, READY_BUDGET_S, RESTORE_ROUNDTRIP
 from kwin_mcp.models import HeldInput, TypeRoute
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Generator, Iterable
 
 # Longest uninterrupted sleep while holding a button or touch point, so a
 # long-press can report progress; the total hold duration is unchanged.
@@ -59,11 +59,42 @@ def abort_waits() -> None:
     _ABORT.set()
 
 
+# kwin-mcp-warden: checks a caller can run inside the gestures of its own call (per
+# thread). ``between`` runs at every wait inside a gesture (drag, swipe and pinch steps,
+# holds, multi-step scrolls); ``before_press(x, y)`` runs after the pointer reached its
+# target and right before a button or touch goes down. Raising from either stops the
+# gesture, and the gesture's own cleanup releases what it pressed.
+_CHECKS = threading.local()
+
+
+@contextlib.contextmanager
+def input_checks(
+    between: Callable[[], None] | None = None,
+    before_press: Callable[[int, int], None] | None = None,
+) -> Generator[None]:
+    """Run ``between`` and ``before_press`` inside this thread's gestures until exit."""
+    saved = (getattr(_CHECKS, "between", None), getattr(_CHECKS, "before_press", None))
+    _CHECKS.between, _CHECKS.before_press = between, before_press
+    try:
+        yield
+    finally:
+        _CHECKS.between, _CHECKS.before_press = saved
+
+
+def _before_press(x: float, y: float) -> None:
+    check = getattr(_CHECKS, "before_press", None)
+    if check is not None:
+        check(round(x), round(y))
+
+
 def _wait(seconds: float) -> None:
     """Sleep ``seconds`` inside a gesture; raise InputAbortedError once exiting."""
     if _ABORT.wait(max(seconds, 0.0)):
         msg = "kwin-mcp is shutting down; the gesture stopped and released its input"
         raise InputAbortedError(msg)
+    check = getattr(_CHECKS, "between", None)
+    if check is not None:
+        check()
 
 
 def _hold(seconds: float, message: str) -> None:
@@ -1486,6 +1517,7 @@ class InputBackend:
             for i in range(click_count):
                 if i > 0:
                     time.sleep(_MULTI_CLICK_GAP_SECONDS)
+                _before_press(x, y)
                 self._client.pointer_button(btn_code, _PRESSED)
                 try:
                     if hold_ms > 0 and i == click_count - 1:
@@ -1539,10 +1571,14 @@ class InputBackend:
                 if not clicks:
                     continue
                 ticks = sign * clicks * _SCROLL_DISCRETE_UNIT
-                self._client.pointer_scroll_discrete(
-                    ticks if horizontal else 0, 0 if horizontal else ticks
-                )
-                time.sleep(0.01)
+                try:
+                    self._client.pointer_scroll_discrete(
+                        ticks if horizontal else 0, 0 if horizontal else ticks
+                    )
+                    _wait(0.01)
+                except BaseException:
+                    self._client.pointer_scroll_stop()
+                    raise
             self._client.pointer_scroll_stop()
         else:
             total_dx = float(delta) * _SCROLL_STEP_PIXELS if horizontal else 0.0
@@ -1550,9 +1586,13 @@ class InputBackend:
             if increments > 1:
                 step_dx = total_dx / increments
                 step_dy = total_dy / increments
-                for _ in range(increments):
-                    self._client.pointer_scroll(step_dx, step_dy)
-                    time.sleep(0.01)
+                try:
+                    for _ in range(increments):
+                        self._client.pointer_scroll(step_dx, step_dy)
+                        _wait(0.01)
+                except BaseException:
+                    self._client.pointer_scroll_stop()
+                    raise
             else:
                 self._client.pointer_scroll(total_dx, total_dy)
             self._client.pointer_scroll_stop()
@@ -1594,6 +1634,7 @@ class InputBackend:
                 pressed_mod_codes.append(mod)
                 time.sleep(0.01)
 
+            _before_press(from_x, from_y)
             self._client.pointer_button(btn_code, _PRESSED)
             button_pressed = True
             time.sleep(0.02)
@@ -1649,6 +1690,7 @@ class InputBackend:
             return False
         self.mouse_move(x, y)
         time.sleep(0.02)
+        _before_press(x, y)
         self._client.pointer_button(_BTN_CODES[button], _PRESSED)
         self._held_buttons[button] = None
         return True
@@ -1791,6 +1833,7 @@ class InputBackend:
             x, y: Coordinates to tap at.
             hold_ms: Duration to hold before lifting (for long-press).
         """
+        _before_press(x, y)
         tid = self._client.touch_down(float(x), float(y))
         try:
             if hold_ms > 0:
@@ -1821,6 +1864,7 @@ class InputBackend:
         dx = to_x - from_x
         dy = to_y - from_y
 
+        _before_press(from_x, from_y)
         tid = self._client.touch_down(float(from_x), float(from_y))
         step_delay = max(0.001, duration_ms / 1000.0 / steps)
 
@@ -1861,6 +1905,7 @@ class InputBackend:
         half_start = start_distance / 2.0
         tids: list[int] = []
         try:
+            _before_press(center_x, center_y)
             tids.append(self._client.touch_down(float(center_x - half_start), float(center_y)))
             tids.append(self._client.touch_down(float(center_x + half_start), float(center_y)))
             tid1, tid2 = tids
@@ -1905,6 +1950,7 @@ class InputBackend:
         # Start touches spread vertically around center
         tids: list[int] = []
         try:
+            _before_press(from_x, from_y)
             for f in range(fingers):
                 offset = (f - (fingers - 1) / 2.0) * finger_spacing
                 tid = self._client.touch_down(float(from_x), float(from_y + offset))

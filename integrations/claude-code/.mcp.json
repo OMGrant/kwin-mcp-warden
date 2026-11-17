@@ -1,8 +1,7 @@
 {
   "mcpServers": {
-    "kwin-mcp": {
-      "command": "uvx",
-      "args": ["kwin-mcp"]
+    "kwin-mcp-warden": {
+      "command": "kwin-mcp-warden"
     }
   }
 }

@@ -1,7 +1,7 @@
 [project]
-name = "kwin-mcp"
-version = "1.0.0"
-description = "MCP server for Linux desktop GUI automation on KDE Plasma 6 Wayland — virtual testing and live desktop automation"
+name = "kwin-mcp-warden"
+version = "0.1.0"
+description = "kwin-mcp with a warden: KDE Plasma live desktop automation for Claude that asks you first, with a consent card, per-app grants and a stop key (Meta+Alt+Esc)"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Byeonghoon Yoo", email = "bhyoo@bhyoo.com" }]
@@ -67,8 +67,8 @@ Changelog = "https://github.com/isac322/kwin-mcp/blob/main/CHANGELOG.md"
 Documentation = "https://github.com/isac322/kwin-mcp#readme"
 
 [project.scripts]
-kwin-mcp = "kwin_mcp.server:main"
-kwin-mcp-cli = "kwin_mcp.cli:main"
+kwin-mcp-warden = "kwin_mcp.server:main"
+kwin-mcp-warden-cli = "kwin_mcp.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.14.0"]
@@ -131,6 +131,10 @@ include = [
     "src/kwin_mcp/accessibility.py",
     "src/kwin_mcp/geometry.py",
     "src/kwin_mcp/server.py",
+    "src/kwin_mcp/warden/daemon.py",
+    "tests/warden/dbus_app.py",
+    "tests/warden/gtk3_app.py",
+    "tests/warden/fake_tray_host.py",
     "tests/e2e/gui_probe.py",
     "tests/e2e/interaction_probe.py",
     "tests/e2e/test_dbus_call.py",
@@ -139,9 +143,13 @@ include = [
     "tests/e2e/window_zoo.py",
 ]
 [tool.ty.overrides.rules]
-unresolved-import = "ignore"
+import-not-found = "ignore"
 
 [[tool.ty.overrides]]
 include = ["src/kwin_mcp/input.py", "tests/e2e/visual_harness.py"]
 [tool.ty.overrides.rules]
 possibly-missing-attribute = "ignore"
+
+[tool.uv.build-backend]
+# The fork keeps kwin-mcp's module name so upstream changes merge cleanly.
+module-name = "kwin_mcp"

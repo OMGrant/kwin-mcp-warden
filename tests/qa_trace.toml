@@ -3014,7 +3014,7 @@ auto = "e2e-mcp"
 check = "pytest"
 file = "tests/e2e/test_tool_surface_cutover.py"
 test = "test_exactly_29_tools_no_old_names"
-extra_tests = ["tests/unit/test_tool_registration.py::test_list_tools_is_static_29_names"]
+extra_tests = ["tests/unit/test_tool_registration.py::test_list_tools_is_static_31_names"]
 slow = false
 mutants = ["M53"]
 

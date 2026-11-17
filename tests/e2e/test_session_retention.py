@@ -60,7 +60,7 @@ HOST_HOME_RETENTION_ERROR = (
     "retention.home=true needs home='isolated'.\nPass home='isolated', or drop retention.home."
 )
 SERIALIZED_OUTCOME = (
-    "kwin-mcp: exit cleanup: serialized session_stop path (completed on the tool thread)"
+    "kwin-mcp-warden: exit cleanup: serialized session_stop path (completed on the tool thread)"
 )
 
 

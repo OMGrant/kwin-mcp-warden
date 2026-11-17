@@ -873,6 +873,65 @@ def outputs(timeout: float = 5.0) -> dict[str, object]:
     return payload
 
 
+# kwin-mcp-warden: every window as you see it, bottom to top, for the warden's
+# checks (which window is under a point, which one has focus, what a picture
+# may show). Visible means not minimized and on the desktop its screen shows.
+_STACK_SCRIPT = """
+var out = [];
+var st = workspace.stackingOrder;
+for (var i = 0; i < st.length; i++) {
+    var w = st[i];
+    if (w.deleted) { continue; }
+    var current = workspace.currentDesktop;
+    if (workspace.currentDesktopForScreen && w.output) {
+        current = workspace.currentDesktopForScreen(w.output) || current;
+    }
+    var onDesktop = w.onAllDesktops || w.desktops.length === 0;
+    for (var k = 0; k < w.desktops.length && !onDesktop; k++) {
+        if (w.desktops[k] === current) { onDesktop = true; }
+    }
+    var f = w.frameGeometry;
+    out.push({
+        id: String(w.internalId), pid: w.pid, app: String(w.resourceClass),
+        desktopFile: String(w.desktopFileName || ""),
+        visible: onDesktop && !w.minimized && !w.hidden,
+        active: w === workspace.activeWindow,
+        managed: w.managed, normal: w.normalWindow, dialog: w.dialog,
+        dock: w.dock, desktop: w.desktopWindow, notification: w.notification,
+        popup: w.popupWindow, caption: String(w.caption),
+        parent: w.transientFor ? String(w.transientFor.internalId) : null,
+        desktopNames: w.desktops.map(function (d) { return String(d.name); }),
+        frame: [Math.round(f.x), Math.round(f.y), Math.round(f.width), Math.round(f.height)]
+    });
+}
+callDBus("{sink}", "{path}", "{sink}", "Report", JSON.stringify(out));
+"""
+
+
+def stack(timeout: float = 5.0) -> list[dict[str, object]]:
+    """Every window bottom to top, with whether it is visible now (kwin-mcp-warden)."""
+    payload = json.loads(run_kwin_script(_STACK_SCRIPT, timeout))
+    if not isinstance(payload, list):
+        msg = f"KWin returned a malformed stacking order: {payload!r}"
+        raise RuntimeError(msg)
+    return payload
+
+
+# kwin-mcp-warden: the primary monitor as KWin orders them (Workspace::screenOrder, highest
+# priority first), for when KDE's kscreen-doctor isn't there to ask.
+_PRIMARY_SCRIPT = """
+var order = workspace.screenOrder;
+callDBus("{sink}", "{path}", "{sink}", "Report",
+         JSON.stringify(order.length ? String(order[0].name) : ""));
+"""
+
+
+def primary(timeout: float = 5.0) -> str:
+    """The name of the output KWin puts first (the primary monitor), or ''."""
+    payload = json.loads(run_kwin_script(_PRIMARY_SCRIPT, timeout))
+    return payload if isinstance(payload, str) else ""
+
+
 def _optional_int(request: Mapping[str, object], key: str) -> int | None:
     value = request.get(key)
     if value is None:
@@ -913,6 +972,10 @@ def _dispatch(request: Mapping[str, object]) -> object:
         return active_class()
     if op == "outputs":
         return outputs()
+    if op == "stack":
+        return stack()
+    if op == "primary":
+        return primary()
     msg = f"Unknown geometry op: {op!r}"
     raise ValueError(msg)
 

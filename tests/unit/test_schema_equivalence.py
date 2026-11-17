@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from jsonschema import Draft202012Validator
-from tool_surface import TOOL_NAMES
+from tool_surface import ALL_TOOL_NAMES
 
 from kwin_mcp.server import build_server, raw_schemas
 
@@ -108,7 +108,7 @@ def _nullable_optional_fields(schema: dict[str, Any]) -> set[str]:
 def schema_pairs() -> dict[str, tuple[dict[str, Any], dict[str, Any]]]:
     raw = raw_schemas()
     compact = {tool.name: tool.input_schema for tool in asyncio.run(build_server().list_tools())}
-    assert set(raw) == set(compact) == set(TOOL_NAMES)
+    assert set(raw) == set(compact) == set(ALL_TOOL_NAMES)
     return {name: ({**raw[name], "additionalProperties": False}, compact[name]) for name in raw}
 
 
@@ -116,7 +116,7 @@ def schema_pairs() -> dict[str, tuple[dict[str, Any], dict[str, Any]]]:
 def test_raw_and_compact_schemas_accept_the_same_corpus(
     schema_pairs: dict[str, tuple[dict[str, Any], dict[str, Any]]],
 ) -> None:
-    assert set(SAMPLES["valid"]) == set(TOOL_NAMES)
+    assert set(SAMPLES["valid"]) == set(ALL_TOOL_NAMES)
     checked = 0
     for name, (raw, compact) in schema_pairs.items():
         assert list(raw.get("properties", {})) == list(compact.get("properties", {})), name

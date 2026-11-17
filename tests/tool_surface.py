@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Final
 
 # The 29 tools of the 1.0 surface, in the order of the design's tool table.
+# These are exactly the public callables of AutomationEngine; the fork's two extra tools
+# live in WARDEN_TOOL_NAMES because they are server-only (no engine method).
 TOOL_NAMES: Final[tuple[str, ...]] = (
     "session_start",
     "session_connect",
@@ -41,6 +43,12 @@ TOOL_NAMES: Final[tuple[str, ...]] = (
     "dbus_call",
     "wayland_list",
 )
+
+# The two tools kwin-mcp-warden adds on top of the 1.0 surface (server.py, not the engine).
+WARDEN_TOOL_NAMES: Final[tuple[str, ...]] = ("access_request", "access_list")
+
+# Everything the fork's tools/list returns: 31 tools.
+ALL_TOOL_NAMES: Final[tuple[str, ...]] = (*TOOL_NAMES, *WARDEN_TOOL_NAMES)
 
 # Every tool name that 0.11 (35 tools) or PR #103 (virtual_desktops,
 # window_set_desktop) exposed and 1.0 does not keep: 35 + 2 - 9 kept = 28.

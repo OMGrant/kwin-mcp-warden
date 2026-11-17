@@ -39,6 +39,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native visual-test sessions unset `DISPLAY` instead of passing an empty value, so AT-SPI starts without an X server; legacy Xvfb sessions keep their allocated display.
 - GTK interaction-probe test-fixture status labels keep a stable width as event text changes, preserving CLI/engine coordinate comparisons.
 
+## [0.1.0] - 2026-11-14
+
+kwin-mcp-warden 0.1.0 is a fork of kwin-mcp 1.0.0 that adds a consent layer, the warden. The distribution is renamed and the Python module stays `kwin_mcp`.
+
+### Added
+
+- `access_request(level, app, reason)`: asks the person for access with a card on their primary monitor and waits for the answer (up to 2 minutes). `level` is `see`, `arrange`, `control`, `full_desktop` or `own_screen`.
+- `access_list`: lists the access this session holds now, with the time left on each grant.
+- An optional `reason` string on `app_launch`, `window_close`, `clipboard_read`, `clipboard_write` and `dbus_call`, shown to the person on the consent card.
+- The server and the CLI build a `WardenEngine`, a subclass of `AutomationEngine` that asks before acting on the live desktop.
+
+### Changed
+
+- The distribution is `kwin-mcp-warden` (version 0.1.0). The scripts are `kwin-mcp-warden` and `kwin-mcp-warden-cli`, the MCP server name is `kwin-mcp-warden`, and the argument parser's program name is `kwin-mcp-warden`.
+- The tool count is 31: the 29 tools of kwin-mcp 1.0.0 and the two tools above.
+- The server instructions replace the sentence calling the `window_close` confirmation "a courtesy, not a security boundary" with a kwin-mcp-warden paragraph that tells the agent to ask with `access_request` first.
+
 ## [1.0.0] - 2026-10-15
 
 kwin-mcp 1.0.0 replaces the 37-tool surface of 0.12 with 29 orthogonal MCP tools: one tool per object and operation (session, app, screen, element, window, desktop, pointer, keyboard, touch, clipboard, D-Bus, Wayland), shared argument types, typed structured output on every tool, and the same lossless text as before. **This is a breaking release.** It is a clean cutover with no aliases: 9 tool names are kept (all with changed parameters or outputs), 28 are removed and 20 are new. Calling a removed tool returns an error that names its 1.0 replacement, and an argument that no longer exists returns an error that names the new argument. The [tool migration table](#tool-migration-table) and the [parameter migration table](#parameter-migration-table) below map every old call.

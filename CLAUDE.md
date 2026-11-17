@@ -1,3 +1,40 @@
+# kwin-mcp-warden
+
+A fork of isac322/kwin-mcp (MIT): every kwin-mcp tool, with a warden in front of it.
+On the live desktop nothing passes without a grant the person gave on a consent card
+(UAC-style: front and center on the primary monitor, every screen dimmed, only a click
+allows, Allow waits 1 s, Esc or 2 min = Don't Allow). Grants are per window (with its own dialogs and menus) in four levels
+(See, Arrange, Control, Full desktop), or a screen of Claude's own; they end after 1 hour
+(Full desktop 30 min), with the session, on Meta+Alt+Esc, or from the access list.
+
+- Spec: `design/mock/index.html` (its "Accessibility" section too), served with
+  `python3 -m http.server 8931 --bind 127.0.0.1` from `design/mock`.
+- Code: `src/kwin_mcp/warden/` (policy.py is the levels table; gate.py is WardenEngine, the
+  engine the server and CLI build; card.py + ui/card.qml the card; daemon.py + ui/overlay.qml
+  the stop key, your-hands watcher, frame, tag and access list). The module stays `kwin_mcp`
+  so upstream merges stay clean; the remote `upstream` is isac322/kwin-mcp.
+- Deferred list: `docs/deferred.md`. Every report starts with it.
+- Boundary tests: `tests/warden/run.sh` (a private nested KWin: own bus, Wayland socket, fresh
+  HOME and XDG_RUNTIME_DIR, a pipe standing in for the mouse; never the real desktop).
+  conftest.py sandboxes the whole test process before any test (no display, bus or home of
+  the person; never restored), and run.sh fails if a test session wrote into the real log
+  or took down the person's Flatpak document portal (upstream #132), and if anything the run
+  started is still running afterwards (every process carries the run's mark,
+  `tests/warden/run_processes.py`; what's left is listed and stopped).
+  `tests/warden/run.sh --plants` proves each test catches its planted fault (each test must
+  first pass alone). Unit: `.venv/bin/python -m pytest tests/unit` (includes
+  test_warden_policy.py: every tool in the server's registry has a rule; unplaced tools are
+  closed). Card pictures: `tests/warden/render_card.py OUT.png [req.json] --host-theme`.
+- Stranger check: `tests/warden/stranger.sh` (a built wheel installed outside the source folder, boundary tests with a fresh HOME). As another Linux user on another distro: `tests/warden/container.sh` (rootless podman, upstream's Debian E2E image plus `docker/warden.Dockerfile`, user `tester`, no network, no host display, bus or input).
+- Upstream's release gate: `scripts/run-e2e-docker.sh -- tests/e2e tests/unit` (podman; the Fedora variant's pinned base image isn't on the registry podman resolves `fedora` to). Its first step is upstream's ruff, ruff format and ty, so those must stay clean (`.venv/bin/ruff`, `.venv/bin/ty`, the image's versions: ruff 0.17.5, ty 0.0.104).
+- Older Qt: the card and notice must load on Qt 6.8 and layer-shell-qt without `activateOnShow` (Debian 13); newer-only types go through a Loader (`ui/Shadow.qml`).
+- Every layer-shell window sits at its own monitor's origin, set again right before it shows (deferred 20): Qt moves a window to the monitor its geometry is on, and layer-shell-qt makes the surface there.
+- Dev env: `python3 -m venv --system-site-packages .venv && PYTHONNOUSERSITE=1 .venv/bin/pip install -e .` (without PYTHONNOUSERSITE, pip takes pydantic from ~/.local and the venv breaks under another HOME)
+  (PyGObject, dbus-python and Pillow come from the system; uv is not used here).
+- Never run tests/e2e or anything that injects input against the real desktop.
+
+---
+
 # Claude Code Working Guidelines
 
 ## Project Overview

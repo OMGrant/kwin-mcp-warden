@@ -141,9 +141,12 @@ def test_stop_keeps_exactly_the_retained_dirs(
     assert (home_dir is not None) == (home == "isolated")
     config_dirs = harness.temp_dirs("kwin-mcp-config-")
     assert len(config_dirs) == (1 if home == "host" else 0)
+    # kwin-mcp-warden: the private bus's own config (no document portal of its own).
+    bus_dirs = harness.temp_dirs("kwin-mcp-bus-")
+    assert len(bus_dirs) == 1
     # Decided at start: the exit path's registry holds exactly what stop removes.
     assert harness.registered() == _expected_registered(
-        home_dir, screenshot_dir, config_dirs, retention
+        home_dir, screenshot_dir, config_dirs + bus_dirs, retention
     )
     (screenshot_dir / "frame.png").write_bytes(b"png")
 
@@ -158,7 +161,7 @@ def test_stop_keeps_exactly_the_retained_dirs(
         assert (screenshot_dir / "frame.png").read_bytes() == b"png"
     if home_dir is not None:
         assert home_dir.is_dir() == retention.home
-    assert all(not path.exists() for path in config_dirs)
+    assert all(not path.exists() for path in config_dirs + bus_dirs)
     assert harness.registered() == set()
     assert session.stop() == KeptPaths()
 
@@ -210,7 +213,8 @@ def test_host_home_gets_a_private_config_dir_with_kwalletrc(
         assert env["HOME"] == "/home/host-user"
         assert env["XDG_CONFIG_HOME"] == str(config_dir)
         assert "Enabled=false" in (config_dir / "kwalletrc").read_text()
-        assert harness.registered_at_spawn == [[config_dir]]
+        [bus_dir] = harness.temp_dirs("kwin-mcp-bus-")
+        assert harness.registered_at_spawn == [[config_dir, bus_dir]]
     finally:
         session.stop()
     assert not config_dir.exists()
@@ -232,7 +236,8 @@ def test_isolated_home_has_xdg_dirs_and_kwalletrc(harness: _Harness) -> None:
         assert env["HOME"] == str(home_dir)
         assert env["XDG_CONFIG_HOME"] == str(home_dir / ".config")
         assert harness.temp_dirs("kwin-mcp-config-") == []
-        assert harness.registered_at_spawn == [[home_dir]]
+        [bus_dir] = harness.temp_dirs("kwin-mcp-bus-")
+        assert harness.registered_at_spawn == [[home_dir, bus_dir]]
     finally:
         session.stop()
     assert not home_dir.exists()

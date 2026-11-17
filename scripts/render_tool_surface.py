@@ -16,7 +16,8 @@ from typing import Any
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 _DEFAULT_SNAPSHOT = "tests/unit/snapshots/tool_surface.json"
 _UNIVERSAL_MODIFIERS = frozenset({"capture", "def:Capture", "retention", "def:Retention"})
-V1_BUDGET_LIMIT: int = 9510
+# kwin-mcp-warden: upstream 9510, raised for keyboard_type(into=...) (test_schema_budget.py).
+V1_BUDGET_LIMIT: int = 9700
 DOMAIN_OBJECTS: tuple[str, ...] = (
     "session",
     "app",
@@ -30,6 +31,7 @@ DOMAIN_OBJECTS: tuple[str, ...] = (
     "clipboard",
     "dbus",
     "wayland",
+    "access",  # kwin-mcp-warden: access_request (Act), access_list (Read)
 )
 ACCESS_MODES: tuple[str, ...] = ("Read", "Act", "Lifecycle", "Hold")
 SHARED_TYPES: tuple[str, ...] = (

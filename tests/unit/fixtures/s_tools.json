@@ -1,5 +1,5 @@
 {
- "source": "Proposal S section 11 (params, annotations, title) and section 2 ('Description (shipped)', output models with the implementation contract's section 0.2 additions). Parameter descriptions are the shipped short forms: '($defs/<Type>)' pointers dropped, and null where S has none or where the text only restated the type (element_query.locator, pointer_click.target).",
+ "source": "Proposal S section 11 (params, annotations, title) and section 2 ('Description (shipped)', output models with the implementation contract's section 0.2 additions). Parameter descriptions are the shipped short forms: '($defs/<Type>)' pointers dropped, and null where S has none or where the text only restated the type (element_query.locator, pointer_click.target). kwin-mcp-warden fork additions: the reason parameter on app_launch, window_close, clipboard_read, clipboard_write and dbus_call, and the access_request and access_list tools (written from the fork's tool descriptions in server.py), and keyboard_type's into parameter (text written into a field through AT-SPI).",
  "tools": [
   {
    "name": "session_start",
@@ -177,6 +177,12 @@
      "required": false,
      "default": null,
      "description": "Extra environment variables for this process. Names must be non-empty without '='; no NUL bytes."
+    },
+    {
+     "name": "reason",
+     "required": false,
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card."
     }
    ],
    "output": [
@@ -477,6 +483,12 @@
      "required": false,
      "default": null,
      "description": null
+    },
+    {
+     "name": "reason",
+     "required": false,
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card."
     }
    ],
    "output": [
@@ -789,7 +801,7 @@
   {
    "name": "keyboard_type",
    "title": "Type text",
-   "description": "Insert text at the keyboard focus. keys = per-key US-QWERTY events (rejects other characters before sending anything); unicode = wtype, else a private clipboard paste that restores the previous selection.",
+   "description": "Insert text at the keyboard focus. keys = per-key US-QWERTY events (rejects other characters before sending anything); unicode = wtype, else a private clipboard paste that restores the previous selection. into: that field instead.",
    "annotations": {
     "readOnlyHint": false,
     "destructiveHint": true,
@@ -807,6 +819,18 @@
      "required": false,
      "default": "keys",
      "description": "keys = per-key events, US-QWERTY only (else error: retry method=\"unicode\"); unicode = any text, may paste."
+    },
+    {
+     "name": "into",
+     "required": false,
+     "default": null,
+     "description": "A text field ({ref} or {strict}): write at its caret via AT-SPI, no focus or keys. Not Chrome."
+    },
+    {
+     "name": "replace",
+     "required": false,
+     "default": false,
+     "description": "With into: replace all its text."
     },
     {
      "name": "capture",
@@ -1020,7 +1044,14 @@
     "idempotentHint": true,
     "openWorldHint": false
    },
-   "params": [],
+   "params": [
+    {
+     "name": "reason",
+     "required": false,
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card."
+    }
+   ],
    "output": [
     "text"
    ]
@@ -1040,6 +1071,12 @@
      "name": "text",
      "required": true,
      "description": "Any text, including NUL."
+    },
+    {
+     "name": "reason",
+     "required": false,
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card."
     }
    ],
    "output": [
@@ -1083,6 +1120,12 @@
      "required": false,
      "default": null,
      "description": "dbus-send strings (\"int32:5\") and/or typed JSON {type, value, element_type?}, mixable."
+    },
+    {
+     "name": "reason",
+     "required": false,
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card."
     }
    ],
    "output": [
@@ -1112,6 +1155,54 @@
     "filter",
     "lines",
     "globals"
+   ]
+  },
+  {
+   "name": "access_request",
+   "title": "Ask the person for access",
+   "description": "Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). Grants last 1 hour or until the session ends; the person can end them at any time.",
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+   },
+   "params": [
+    {
+     "name": "level",
+     "required": true,
+     "description": "The least you need: see (read and picture one window, with its dialogs), arrange (move it), control (click and type in it), full_desktop (every window, 30 min at most), own_screen (a virtual session of your own, for session_start), accessibility (the desktop's switch, for keyboard_type(into))."
+    },
+    {
+     "name": "reason",
+     "required": true,
+     "description": "Why, in one or two sentences; the person reads it on the card."
+    },
+    {
+     "name": "app",
+     "required": false,
+     "default": "",
+     "description": "The app's id or name (e.g. google-chrome, org.kde.kate); needed for see, arrange and control."
+    }
+   ],
+   "output": [
+    "allowed",
+    "text"
+   ]
+  },
+  {
+   "name": "access_list",
+   "title": "List what you hold",
+   "description": "List the access this session holds now, with the time left on each grant.",
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
+   "params": [],
+   "output": [
+    "grants"
    ]
   }
  ]

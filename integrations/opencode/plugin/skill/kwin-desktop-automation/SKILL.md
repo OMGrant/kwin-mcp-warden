@@ -5,7 +5,7 @@ description: Use when the user asks to launch, click, type, screenshot, or other
 
 # kwin-desktop-automation
 
-Drive Linux KDE Plasma 6 Wayland desktops through the `kwin-mcp` MCP server. The MCP server provides 29 capabilities; this skill provides the operational discipline to use them efficiently, in the right order, and without falling into platform-specific traps.
+Drive Linux KDE Plasma 6 Wayland desktops through the `kwin-mcp` MCP server. The MCP server provides 31 capabilities; this skill provides the operational discipline to use them efficiently, in the right order, and without falling into platform-specific traps.
 
 ## When to apply
 
@@ -18,7 +18,7 @@ Activate this skill whenever the user wants to:
 
 If no kwin-mcp tools are available, this skill does not apply.
 
-## Conventions across all 29 tools
+## Conventions across all 31 tools
 
 Every coordinate, in and out, is a global logical pixel. Points are objects (`target={"x": 10, "y": 20}`), rectangles are `{x, y, width, height}`, and key combinations are one string (`"ctrl+shift+t"`). Unknown argument names are errors that name the right argument; read the error and retry.
 

@@ -30,7 +30,7 @@ uv sync
 
 The project includes two consistency checkers that run in CI on pull requests:
 
-1. **`scripts/check_docs_seo.py`** — validates SEO keywords, canonical tool counts (29), and plugin manifest keyword alignment across `README.md`, `CLAUDE.md`, `ROADMAP.md`, `CONTRIBUTING.md`, `pyproject.toml`, and `integrations/*`, and verifies that the Claude Code source `SKILL.md` and the OpenCode plugin's bundled `SKILL.md` remain byte-identical.
+1. **`scripts/check_docs_seo.py`** — validates SEO keywords, canonical tool counts (31), and plugin manifest keyword alignment across `README.md`, `CLAUDE.md`, `ROADMAP.md`, `CONTRIBUTING.md`, `pyproject.toml`, and `integrations/*`, and verifies that the Claude Code source `SKILL.md` and the OpenCode plugin's bundled `SKILL.md` remain byte-identical.
 2. **`scripts/sync_plugin_version.py --check`** — verifies that `pyproject.toml [project].version` matches the version recorded in every plugin manifest, and that the OpenCode plugin's bundled `SKILL.md` mirrors the Claude Code source. Without `--check`, the script *writes* the synced state.
 
 Invoke locally:
@@ -81,7 +81,7 @@ The KWin-free tests run on any host and gate every pull request:
 uv run pytest tests/unit
 ```
 
-They check the 29 tool schemas against the design (names, parameters, annotations, output
+They check the schemas of all 31 tools against the design (names, parameters, annotations, output
 models), the removed-tool and unknown-argument errors, the text renderers, held-input rules,
 selector matching, shard-status aggregation behavior, and the documentation gates: the README
 tool tables, the CHANGELOG migration table, and the repository-wide scan that keeps removed tool
@@ -162,7 +162,7 @@ The suite collects every test under `tests/e2e`. Together they prove:
 
 - engine-level behavior in isolated virtual KWin sessions;
 - the installed `kwin-mcp` entry point over real MCP stdio JSON-RPC, including the exact input and
-  output schemas, structured results, resources, and live-consent elicitation of all 29 tools;
+  output schemas, structured results, resources, and live-consent elicitation of the 29 upstream tools (the two warden tools, `access_request` and `access_list`, have no end-to-end test yet);
 - AT-SPI2 observation and KWin EIS keyboard, pointer, touch, clipboard, window, and D-Bus paths;
 - GUI pixels, cursor capture, repaint changes, and frame bursts in version-aware visual fixtures: KWin 6.3 and 6.7 use the existing nested Xvfb/KWin sessions with explicit X11 `scrot`, while KWin 6.8 and later use a private `kwin_wayland --virtual` session with `/dev/udmabuf`, ScreenShot2, and an independent Spectacle PNG observer;
 - screenshot coordinate mapping at output scales 1.0 and 1.45: pixels read from a screenshot,
@@ -264,7 +264,7 @@ scripts/
 
 tests/
 ├── conftest.py         # Suite policy: markers (qa, slow, visual), strict skips, sharding
-├── tool_surface.py     # The 29 tool names and the 28 removed names, written out independently of the server
+├── tool_surface.py     # The 29 engine tool names, the 2 warden tool names and the 28 removed names, written out independently of the server
 ├── unit/               # KWin-free schemas, renderers, held input, selectors, CLI, and docs gates
 │   ├── test_spoken_name.py       # Spoken-name Unicode, whitespace, punctuation, and word-boundary rules
 │   ├── test_dbus_service_file.py # Service-file parsing and argv parity with dbus-daemon activation

@@ -112,6 +112,7 @@ from kwin_mcp.screenshot import (
     to_frame,
 )
 from kwin_mcp.session import (
+    HOST_DESKTOP_ENV,
     AccessibilityError,
     LiveSession,
     Session,
@@ -482,7 +483,8 @@ class AutomationEngine:
             env["XDG_CACHE_HOME"] = str(info.home_dir / ".cache")
             env["XDG_STATE_HOME"] = str(info.home_dir / ".local" / "state")
         env["QT_QPA_PLATFORM"] = "wayland"
-        env.pop("DISPLAY", None)
+        for name in HOST_DESKTOP_ENV:
+            env.pop(name, None)
         return env
 
     def _a11y_bus_address(self, env: dict[str, str]) -> str:
@@ -858,6 +860,10 @@ class AutomationEngine:
             warnings=list(self._session_warnings),
         )
 
+    def _host_wayland_socket(self) -> str:
+        """Where a windowed session draws its window; kwin-mcp's own sessions are headless."""
+        return ""
+
     def _reset_session_state(self) -> None:
         self._session = None
         self._input = None
@@ -919,6 +925,7 @@ class AutomationEngine:
                 enable_clipboard=enable_clipboard,
                 home=home,
                 retention=retention,
+                host_wayland_socket=self._host_wayland_socket(),
             )
             info = session.start(config, progress_total=total_steps)
             warnings.extend(info.startup_warnings)
@@ -1917,10 +1924,84 @@ class AutomationEngine:
         frames, held = self._input_epilogue(inp, warnings, capture)
         return KeyboardPressResult(keys=keys, frames=frames, held=held, warnings=warnings)
 
-    def keyboard_type(
-        self, text: str, method: TypeMethod = "keys", capture: Capture | None = None
+    def _type_into(
+        self,
+        text: str,
+        method: TypeMethod,
+        into: ElementAddress,
+        capture: Capture | None,
+        replace: bool = False,
     ) -> KeyboardTypeResult:
-        """Insert text at the keyboard focus: per-key US-QWERTY events, or unicode text."""
+        """keyboard_type(into=...): one AT-SPI write at the element's caret, or in place of
+        all its text (replace)."""
+        if "\0" in text:
+            raise ValueError("text must not contain NUL characters")
+        self._require_session()
+        address: dict[str, object]
+        if isinstance(into, RefAddr):
+            self._check_ref(into.ref)
+            address = {"ref": into.ref}
+        else:
+            address = {"strict": into.strict.model_dump()}
+        try:
+            resp = self._run_atspi(
+                "write", retry=False, address=address, text=text, replace=replace
+            )
+        except _AtspiRequestNotSentError:
+            raise
+        except RuntimeError as exc:
+            msg = f"{exc}. The text may still have been written; check the UI before retrying."
+            raise RuntimeError(msg) from exc
+        result = self._atspi_result(resp)
+        if result.get("error"):
+            msg = (
+                f"AT-SPI write sent but not confirmed ({result['error']}); "
+                "the text may have been written, check the UI before retrying."
+            )
+            raise RuntimeError(msg)
+        if not result.get("written"):
+            raise RuntimeError("The application refused the AT-SPI write; nothing was written.")
+        frames, warnings = self._capture(capture)
+        if not result.get("verified"):
+            # Firefox's fields take the write and drop it (Mozilla bug 1861026).
+            warnings.append(
+                "Reading the field back didn't find the text; check the UI. Some apps "
+                "(Firefox) accept this write and drop it: click the field, then "
+                "keyboard_type without into."
+            )
+        held = HeldInput()
+        if self._input is not None:
+            warnings.extend(self._revalidate(self._input))
+            held = self._input.held()
+        return KeyboardTypeResult(
+            element=UIElement.from_worker(result["element"]),
+            method=method,
+            route="accessibility",
+            chars=len(text),
+            echo=text_echo(text),
+            frames=frames,
+            held=held,
+            warnings=warnings,
+        )
+
+    def keyboard_type(
+        self,
+        text: str,
+        method: TypeMethod = "keys",
+        into: ElementAddress | None = None,
+        replace: bool = False,
+        capture: Capture | None = None,
+    ) -> KeyboardTypeResult:
+        """Insert text at the keyboard focus: per-key US-QWERTY events, or unicode text.
+
+        With ``into``, the text goes straight into that text field through AT-SPI
+        EditableText instead, at its caret (or in place of all its text, ``replace``): no
+        keyboard focus, pointer or key events.
+        """
+        if into is not None:
+            return self._type_into(text, method, into, capture, replace=replace)
+        if replace:
+            raise ValueError("replace works only with into (a text field to write in).")
         if method == "keys":
             check_typeable(text)
         elif "\0" in text:

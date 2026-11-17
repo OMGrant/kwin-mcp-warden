@@ -659,6 +659,11 @@
      },
      "type": "object",
      "description": "Extra environment variables for this process. Names must be non-empty without '='; no NUL bytes."
+    },
+    "reason": {
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card.",
+     "type": "string"
     }
    },
    "required": [
@@ -2910,6 +2915,11 @@
       "delays_ms"
      ],
      "type": "object"
+    },
+    "reason": {
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card.",
+     "type": "string"
     }
    },
    "required": [
@@ -5693,7 +5703,7 @@
  {
   "name": "keyboard_type",
   "title": "Type text",
-  "description": "Insert text at the keyboard focus. keys = per-key US-QWERTY events (rejects other characters before sending anything); unicode = wtype, else a private clipboard paste that restores the previous selection.",
+  "description": "Insert text at the keyboard focus. keys = per-key US-QWERTY events (rejects other characters before sending anything); unicode = wtype, else a private clipboard paste that restores the previous selection. into: that field instead.",
   "inputSchema": {
    "properties": {
     "text": {
@@ -5708,6 +5718,70 @@
       "unicode"
      ],
      "type": "string"
+    },
+    "into": {
+     "description": "A text field ({ref} or {strict}): write at its caret via AT-SPI, no focus or keys. Not Chrome.",
+     "anyOf": [
+      {
+       "additionalProperties": false,
+       "description": "A ref minted by element_query.",
+       "properties": {
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref"
+       ],
+       "type": "object"
+      },
+      {
+       "additionalProperties": false,
+       "description": "Strict: depth 64, fail-closed, exactly one (element, action).",
+       "properties": {
+        "strict": {
+         "additionalProperties": false,
+         "description": "AND-ed filters; app/query/role case-insensitive, states = exact AT-SPI state names; {} = all.",
+         "properties": {
+          "app": {
+           "type": "string"
+          },
+          "query": {
+           "type": "string"
+          },
+          "match": {
+           "default": "substring",
+           "enum": [
+            "substring",
+            "exact",
+            "spoken"
+           ],
+           "type": "string"
+          },
+          "role": {
+           "type": "string"
+          },
+          "states": {
+           "items": {
+            "type": "string"
+           },
+           "type": "array"
+          }
+         },
+         "type": "object"
+        }
+       },
+       "required": [
+        "strict"
+       ],
+       "type": "object"
+      }
+     ]
+    },
+    "replace": {
+     "default": false,
+     "description": "With into: replace all its text.",
+     "type": "boolean"
     },
     "capture": {
      "additionalProperties": false,
@@ -7741,7 +7815,13 @@
   "title": "Read clipboard",
   "description": "Return the session clipboard text (wl-paste). Virtual sessions need enable_clipboard.",
   "inputSchema": {
-   "properties": {},
+   "properties": {
+    "reason": {
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card.",
+     "type": "string"
+    }
+   },
    "type": "object",
    "additionalProperties": false
   },
@@ -7772,6 +7852,11 @@
    "properties": {
     "text": {
      "description": "Any text, including NUL.",
+     "type": "string"
+    },
+    "reason": {
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card.",
      "type": "string"
     }
    },
@@ -7858,6 +7943,11 @@
      },
      "type": "array",
      "description": "dbus-send strings (\"int32:5\") and/or typed JSON {type, value, element_type?}, mixable."
+    },
+    "reason": {
+     "default": "",
+     "description": "Why, in one sentence; the person reads it on the consent card.",
+     "type": "string"
     }
    },
    "required": [
@@ -7944,6 +8034,95 @@
    },
    "required": [
     "lines"
+   ],
+   "type": "object"
+  },
+  "annotations": {
+   "readOnlyHint": true,
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false
+  }
+ },
+ {
+  "name": "access_request",
+  "title": "Ask the person for access",
+  "description": "Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). Grants last 1 hour or until the session ends; the person can end them at any time.",
+  "inputSchema": {
+   "properties": {
+    "level": {
+     "description": "The least you need: see (read and picture one window, with its dialogs), arrange (move it), control (click and type in it), full_desktop (every window, 30 min at most), own_screen (a virtual session of your own, for session_start), accessibility (the desktop's switch, for keyboard_type(into)).",
+     "enum": [
+      "see",
+      "arrange",
+      "control",
+      "full_desktop",
+      "own_screen",
+      "accessibility"
+     ],
+     "type": "string"
+    },
+    "reason": {
+     "description": "Why, in one or two sentences; the person reads it on the card.",
+     "type": "string"
+    },
+    "app": {
+     "default": "",
+     "description": "The app's id or name (e.g. google-chrome, org.kde.kate); needed for see, arrange and control.",
+     "type": "string"
+    }
+   },
+   "required": [
+    "level",
+    "reason"
+   ],
+   "type": "object",
+   "additionalProperties": false
+  },
+  "outputSchema": {
+   "description": "The person's answer to an access request.",
+   "properties": {
+    "allowed": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "allowed",
+    "text"
+   ],
+   "type": "object"
+  },
+  "annotations": {
+   "readOnlyHint": false,
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false
+  }
+ },
+ {
+  "name": "access_list",
+  "title": "List what you hold",
+  "description": "List the access this session holds now, with the time left on each grant.",
+  "inputSchema": {
+   "properties": {},
+   "type": "object",
+   "additionalProperties": false
+  },
+  "outputSchema": {
+   "description": "What this session holds now.",
+   "properties": {
+    "grants": {
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "grants"
    ],
    "type": "object"
   },

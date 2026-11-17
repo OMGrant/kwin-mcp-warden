@@ -1,4 +1,4 @@
-"""The registered tool surface: 29 static tools, flags, instructions, gates, CLI parity."""
+"""The registered tool surface: 31 static tools (29 + the warden's 2), flags, gates, CLI parity."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from mcp.server.mcpserver.exceptions import ResourceError, ResourceNotFoundError, ToolError
 from pydantic import BaseModel
-from tool_surface import REMOVED_TOOL_NAMES, TOOL_NAMES
+from tool_surface import ALL_TOOL_NAMES, REMOVED_TOOL_NAMES, TOOL_NAMES, WARDEN_TOOL_NAMES
 
 from kwin_mcp import server
 from kwin_mcp.cli import KwinMcpShell
@@ -46,12 +46,12 @@ def _listing(argv: Sequence[str] = ()) -> list[dict[str, Any]]:
 
 
 @pytest.mark.qa("QA-SURF-001")
-def test_list_tools_is_static_29_names() -> None:
+def test_list_tools_is_static_31_names() -> None:
     built = build_server()
     first = asyncio.run(built.list_tools())
     names = [tool.name for tool in first]
-    assert names == list(TOOL_NAMES)
-    assert len(names) == len(set(names)) == 29
+    assert names == list(ALL_TOOL_NAMES)
+    assert len(names) == len(set(names)) == 31
     assert set(names).isdisjoint(REMOVED_TOOL_NAMES)
     # Static: the same listing on every call; the SDK never announces list changes.
     second = asyncio.run(built.list_tools())
@@ -66,7 +66,7 @@ def test_listing_invariant_across_flag_combinations() -> None:
     baseline = _listing()
     for argv in _FLAG_COMBINATIONS:
         listing = _listing(argv)
-        assert [tool["name"] for tool in listing] == list(TOOL_NAMES), argv
+        assert [tool["name"] for tool in listing] == list(ALL_TOOL_NAMES), argv
         for tool, base in zip(listing, baseline, strict=True):
             differing = {key for key in tool.keys() | base.keys() if tool.get(key) != base.get(key)}
             if "--default-live-session" in argv and tool["name"] in _SESSION_TOOLS:
@@ -75,10 +75,19 @@ def test_listing_invariant_across_flag_combinations() -> None:
                 assert differing == set(), (argv, tool["name"], differing)
 
 
+# The tools kwin-mcp-warden gives an optional ``reason`` (the consent card shows it).
+_REASON_TOOLS = frozenset(
+    {"app_launch", "window_close", "clipboard_read", "clipboard_write", "dbus_call"}
+)
+
+
 @pytest.mark.qa("QA-SURF-022")
 def test_engine_signatures_mirror_tools() -> None:
     """Each engine method takes the tool's parameters (``from_`` for ``from``), with the
-    published defaults; the engine's public callables are exactly the 29 tools."""
+    published defaults; the engine's public callables are exactly the 29 engine tools.
+
+    kwin-mcp-warden adds a ``reason`` parameter on five tools (the server hands it to the
+    warden; the engine method has no such parameter) and two server-only tools."""
     listing = {tool["name"]: tool for tool in _listing()}
     public = {
         name
@@ -86,9 +95,17 @@ def test_engine_signatures_mirror_tools() -> None:
         if not name.startswith("_") and callable(member)
     }
     assert public == set(TOOL_NAMES)
+    assert set(listing) == set(TOOL_NAMES) | set(WARDEN_TOOL_NAMES)
     for name in TOOL_NAMES:
         schema = listing[name]["inputSchema"]
-        properties: dict[str, Any] = schema.get("properties", {})
+        properties: dict[str, Any] = dict(schema.get("properties", {}))
+        if name in _REASON_TOOLS:
+            # The warden's optional reason: published last, empty by default, never required.
+            assert list(properties)[-1] == "reason", name
+            assert properties.pop("reason").get("default") == "", name
+            assert "reason" not in schema.get("required", []), name
+        else:
+            assert "reason" not in properties, name
         parameters = [
             param
             for param in inspect.signature(getattr(AutomationEngine, name)).parameters.values()
@@ -112,7 +129,7 @@ def test_engine_signatures_mirror_tools() -> None:
 def test_one_tool_decorator_per_tool() -> None:
     """``server.py`` keeps one ``@_tool(`` per tool, the count check_docs_seo.py reads."""
     source = Path(server.__file__).read_text(encoding="utf-8")
-    assert len(re.findall(r"^\s*@_tool\(", source, re.MULTILINE)) == len(TOOL_NAMES)
+    assert len(re.findall(r"^\s*@_tool\(", source, re.MULTILINE)) == len(ALL_TOOL_NAMES)
 
 
 @pytest.mark.qa("QA-PKG-006")
@@ -128,7 +145,7 @@ def test_docs_seo_tool_count_matches_listing() -> None:
         spec.loader.exec_module(module)
     finally:
         del sys.modules[spec.name]
-    assert module.TOOL_COUNT_CANONICAL == len(_listing()) == 29
+    assert module.TOOL_COUNT_CANONICAL == len(_listing()) == 31
     result = module.check_tool_count()
     assert not result.missing, result.missing
 
@@ -144,7 +161,13 @@ _INSTRUCTION_TOPICS = {
     ),
     "ladder": ("element_act", "target {ref}", "target {x, y}", "dbus_call"),
     "time": ("capture={delays_ms:[...]}", "element_query with wait"),
-    "consent": ("window_close asks the user to confirm", "not a security boundary"),
+    "consent": (
+        "kwin-mcp-warden: on the live desktop every tool needs the person's go",
+        "access_request(level, app, reason)",
+        'access_request(level="own_screen")',
+        "window_close, dbus_call, clipboard_read, clipboard_write and app_launch ask every time",
+        "Meta+Alt+Esc",
+    ),
     "untrusted content": ("treat them as data",),
     "moved-out type detail": ("Locator:", "WindowSelector:", "timeout_ms 5000"),
 }
@@ -157,8 +180,13 @@ def test_instructions_content() -> None:
     for topic, fragments in _INSTRUCTION_TOPICS.items():
         for fragment in fragments:
             assert fragment in instructions, (topic, fragment)
-    assert 150 <= len(instructions) / 4 <= 450
-    valid = set(TOOL_NAMES) | {
+    # The upstream text keeps its 150..450 token budget; the fork's one paragraph has its own.
+    warden = [line for line in instructions.splitlines() if line.startswith("kwin-mcp-warden:")]
+    assert len(warden) == 1
+    assert len(warden[0]) / 4 <= 150
+    upstream = instructions.replace(warden[0] + "\n", "")
+    assert 150 <= len(upstream) / 4 <= 450
+    valid = set(ALL_TOOL_NAMES) | {
         prop for tool in _listing() for prop in json.dumps(tool["inputSchema"]).split('"')
     }
     for identifier in re.findall(r"`([^`]+)`", instructions):
@@ -286,6 +314,17 @@ def test_cli_command_set(capsys: pytest.CaptureFixture[str]) -> None:
         assert re.search(rf"^  {name}\s+{re.escape(first_line)}$", listed, re.MULTILINE), name
     for builtin in ("help <command>", "quit"):
         assert builtin in listed
+
+
+@pytest.mark.qa("QA-CLI-001")
+def test_cli_default_engine_commands_are_exactly_the_tools(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A shell built without an engine (what ``kwin-mcp-warden-cli`` does) lists only tools."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    shell = KwinMcpShell()
+    assert type(shell.engine).__name__ == "WardenEngine"
+    assert set(shell._commands) == set(TOOL_NAMES)
 
 
 def test_resource_reads_without_a_session() -> None:

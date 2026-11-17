@@ -293,7 +293,7 @@ def _spawn_new_session(argv: list[str]) -> subprocess.Popen[str]:
 def _spawn_with_stderr(argv: list[str]) -> subprocess.Popen[str]:
     """Spawn the server with stderr piped, so the exit outcome line can be read.
 
-    The server writes a single ``kwin-mcp: exit cleanup: ...`` line to stderr before
+    The server writes a single ``kwin-mcp-warden: exit cleanup: ...`` line to stderr before
     ``os._exit``; the pipe buffer is far larger than that, so reading it after the
     process has exited is safe.
     """
@@ -1388,7 +1388,7 @@ def test_sigterm_during_tool_submission_exits_143_with_stdin_open() -> None:
             f"expected exit 143 when a signal lands mid-submission, got {exit_code}"
         )
         stderr = server.stderr.read() if server.stderr is not None else ""
-        assert "kwin-mcp: exit cleanup:" in stderr, (
+        assert "kwin-mcp-warden: exit cleanup:" in stderr, (
             f"the exit outcome line was not written to stderr: {stderr!r}"
         )
     finally:
@@ -1662,11 +1662,11 @@ def test_cli_exit_terminates_owned_process_not_attached_to_a_session(exit_mode: 
 # ---------------------------------------------------------------------------
 
 _REGISTRY_OUTCOME = (
-    "kwin-mcp: exit cleanup: owned-process registry path "
+    "kwin-mcp-warden: exit cleanup: owned-process registry path "
     "(stop cancelled before it ran; owned groups terminated)"
 )
 _SERIALIZED_OUTCOME = (
-    "kwin-mcp: exit cleanup: serialized session_stop path (completed on the tool thread)"
+    "kwin-mcp-warden: exit cleanup: serialized session_stop path (completed on the tool thread)"
 )
 # A keyboard_press whose capture burst holds the tool thread past the exit drain.
 _BUSY_CAPTURE_DELAY_MS = 10000
@@ -1873,7 +1873,7 @@ def test_signal_exit_codes_after_cleanup(signum: int, second_sigterm: bool) -> N
         exit_code = server.wait(timeout=SERVER_EXIT_TIMEOUT_SECONDS)
         assert exit_code == 128 + signum, f"expected exit {128 + signum}, got {exit_code}"
         stderr = server.stderr.read() if server.stderr is not None else ""
-        assert stderr.count("kwin-mcp: exit cleanup:") == 1, stderr
+        assert stderr.count("kwin-mcp-warden: exit cleanup:") == 1, stderr
         assert _SERIALIZED_OUTCOME in stderr, stderr
         assert "Traceback" not in stderr, stderr
         _assert_session_gone(pgid, app_pid)
@@ -2044,7 +2044,7 @@ def test_server_sigterm_during_direct_atspi_start_cleans_owned_children(
 
         drain_to_eof(reader)
         stderr = drain_to_eof(stderr_reader)
-        assert "kwin-mcp: exit cleanup:" in stderr, stderr
+        assert "kwin-mcp-warden: exit cleanup:" in stderr, stderr
         assert _wait_until(lambda: not _group_pids(pgid), max(0.0, deadline - time.monotonic())), (
             f"owned group {pgid} survived shutdown: {sorted(_group_pids(pgid))}"
         )

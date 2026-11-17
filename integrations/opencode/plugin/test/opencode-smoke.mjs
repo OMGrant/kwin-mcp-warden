@@ -107,15 +107,15 @@ async function stopServer() {
 }
 
 try {
-  const consumer = await mkdtemp(join(tmpdir(), "kwin-mcp-opencode-smoke-"));
+  const consumer = await mkdtemp(join(tmpdir(), "kwin-mcp-warden-opencode-smoke-"));
   try {
     await writeFile(join(consumer, "opencode.json"), JSON.stringify({
-      plugins: [`@isac322/kwin-mcp-opencode@file:${artifactPath}`],
+      plugins: [`kwin-mcp-warden-opencode@file:${artifactPath}`],
     }));
 
     await run("npm", ["install", "--prefix", consumer, "--no-audit", "--no-fund", artifactPath, "@opencode/cli@2.0.32"]);
     const packageJson = JSON.parse(
-      await readFile(join(consumer, "node_modules", "@isac322", "kwin-mcp-opencode", "package.json"), "utf8"),
+      await readFile(join(consumer, "node_modules", "kwin-mcp-warden-opencode", "package.json"), "utf8"),
     );
     const sourcePackageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
     assert.equal(packageJson.version, sourcePackageJson.version, "packed plugin version must match source");
@@ -194,12 +194,12 @@ try {
 
       latest = snapshot;
       assert.equal(latest.info?.version, "2.0.32", "OpenCode server must be V2.0.32");
-      const plugin = latest.plugins.find((entry) => entry.id === "kwin-mcp-opencode");
+      const plugin = latest.plugins.find((entry) => entry.id === "kwin-mcp-warden-opencode");
       if (plugin?.state?.status === "failed") {
         throw new Error(`OpenCode plugin failed to load: ${JSON.stringify(plugin)}`);
       }
       const skill = latest.skills.find((entry) => entry.id === "kwin-desktop-automation");
-      const mcp = latest.mcp.find((entry) => entry.name === "kwin-mcp" || entry.id === "kwin-mcp");
+      const mcp = latest.mcp.find((entry) => entry.name === "kwin-mcp-warden" || entry.id === "kwin-mcp-warden");
       if (plugin?.state?.status === "active" && skill && mcp) {
         assert.match(skill.description ?? "", /launch|click|desktop|kwin-mcp/i);
         assert.match(skill.path ?? "", /kwin-desktop-automation[\\/]SKILL\.md$/);
@@ -210,7 +210,7 @@ try {
         console.log(`OpenCode V2 server registered plugin ${plugin.id}, skill ${skill.id}, and MCP ${mcp.name ?? mcp.id}`);
         console.log(
           `MCP status: ${mcp.status?.status ?? mcp.status ?? mcp.state?.status ?? "unknown"} ` +
-            "(registration accepted even when native uvx dependencies are unavailable)",
+            "(registration accepted even when the kwin-mcp-warden command is unavailable)",
         );
         completed = true;
         break;
@@ -219,10 +219,10 @@ try {
     }
     assert.ok(completed, "OpenCode V2 registries did not become ready before the timeout");
     assert.ok(latest, "OpenCode server never became ready");
-    const plugin = latest.plugins.find((entry) => entry.id === "kwin-mcp-opencode");
+    const plugin = latest.plugins.find((entry) => entry.id === "kwin-mcp-warden-opencode");
     assert.equal(plugin?.state?.status, "active", "plugin must become active");
     assert.ok(latest.skills.some((entry) => entry.id === "kwin-desktop-automation"), "skill must be registered");
-    assert.ok(latest.mcp.some((entry) => entry.name === "kwin-mcp" || entry.id === "kwin-mcp"), "MCP must be registered");
+    assert.ok(latest.mcp.some((entry) => entry.name === "kwin-mcp-warden" || entry.id === "kwin-mcp-warden"), "MCP must be registered");
   } finally {
     await stopServer();
     await rm(consumer, { recursive: true, force: true });

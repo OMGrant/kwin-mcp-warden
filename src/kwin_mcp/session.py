@@ -86,6 +86,82 @@ class SessionConfig:
     socket_name: str = ""
     extra_env: dict[str, str] = field(default_factory=dict)
     output_count: int = 1
+    # kwin-mcp-warden: draw the session in a window on the host desktop (a nested
+    # KWin) instead of headless, so the person sees Claude's own screen. Empty =
+    # headless (kwin-mcp's own --virtual); otherwise the host's Wayland socket path.
+    host_wayland_socket: str = ""
+
+
+# The user's own desktop session, which an isolated session's apps never inherit: the X
+# display, the XSMP session manager, and GTK told to use a portal the private bus can't
+# run (_HOST_ONLY_SERVICES).
+HOST_DESKTOP_ENV = ("DISPLAY", "SESSION_MANAGER", "GTK_USE_PORTAL")
+
+# What a contained session's apps (Session.contain_apps) take from the caller's
+# environment; everything else, the user's runtime sockets above all (sound, SSH agent,
+# their user services), stays out, and the session's own values are set after.
+CONTAINED_ENV_NAMES = frozenset(
+    {
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "SHELL",
+        "LANG",
+        "LANGUAGE",
+        "TZ",
+        "TERM",
+        "XDG_DATA_DIRS",
+        "XDG_CONFIG_DIRS",
+        "XDG_CURRENT_DESKTOP",
+        "XDG_SESSION_TYPE",
+        "DESKTOP_SESSION",
+        "KDE_FULL_SESSION",
+        "KDE_SESSION_VERSION",
+        "PYTHONNOUSERSITE",
+    }
+)
+CONTAINED_ENV_PREFIXES = ("LC_", "QT_", "XCURSOR_", "KWIN_MCP_")
+
+_STOCK_SESSION_CONF = Path("/usr/share/dbus-1/session.conf")
+# Services a private desktop must not start: each takes over state the person's own
+# desktop owns. xdg-document-portal mounts $XDG_RUNTIME_DIR/doc (shared with the host
+# desktop) and the host's portal exits with status 21, so every Flatpak app loses its
+# files until it's restarted; xdg-permission-store rewrites the whole permission table
+# the host's store keeps in memory (upstream issue #132; kwin-mcp-warden measured the
+# first on 2026-11-14). A stand-in that fails to start keeps both on the host only.
+_HOST_ONLY_SERVICES = (
+    "org.freedesktop.portal.Documents",
+    "org.freedesktop.impl.portal.PermissionStore",
+    # xdg-desktop-portal can't run without the permission store: left to start, it takes
+    # its name with no objects and exits, and every app's next request starts it again
+    # (Firefox 160 asks thousands of times and never opens a window). Failing at once,
+    # apps go on without a portal.
+    "org.freedesktop.portal.Desktop",
+)
+
+
+def _write_private_bus_config(bus_dir: Path) -> Path | None:
+    """A session bus config that finds a failing stand-in for each host-only service
+    before the system's own (the first service directory listed wins). None when the
+    stock session.conf isn't where every distro kwin-mcp supports puts it."""
+    if not _STOCK_SESSION_CONF.exists():
+        return None
+    services = bus_dir / "services"
+    services.mkdir(parents=True, exist_ok=True)
+    for name in _HOST_ONLY_SERVICES:
+        (services / f"{name}.service").write_text(
+            f"[D-BUS Service]\nName={name}\nExec=/bin/false\n", encoding="utf-8"
+        )
+    conf = bus_dir / "session.conf"
+    conf.write_text(
+        '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"\n'
+        ' "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">\n'
+        f"<busconfig>\n  <servicedir>{services}</servicedir>\n"
+        f"  <include>{_STOCK_SESSION_CONF}</include>\n</busconfig>\n",
+        encoding="utf-8",
+    )
+    return conf
 
 
 def _write_deterministic_session_config(config_dir: Path) -> None:
@@ -672,6 +748,10 @@ class Session:
         # stop() after the diagnostics it holds were consumed.
         self._stderr_file: IO[bytes] | None = None
         self._session_config_dir: Path | None = None
+        self._bus_dir: Path | None = None
+        # Contained (a screen of the agent's own): launched apps get the session's own
+        # runtime folder and only CONTAINED_ENV_NAMES from the caller's environment.
+        self.contain_apps = False
 
     @property
     def is_running(self) -> bool:
@@ -720,7 +800,7 @@ class Session:
             config = SessionConfig()
         self._config = config
 
-        self._socket_name = config.socket_name or f"wayland-mcp-{os.getpid()}-{int(time.time())}"
+        self._socket_name = config.socket_name or f"wayland-mcp-{os.getpid()}-{time.time_ns()}"
 
         # home="isolated": launched apps get a private temporary HOME.
         if config.home == "isolated":
@@ -764,6 +844,21 @@ class Session:
 
         # Build the wrapper script that runs inside dbus-run-session
         wrapper_script = self._build_wrapper_script(config)
+        self._bus_dir = Path(tempfile.mkdtemp(prefix="kwin-mcp-bus-"))
+        process_registry.register_temp_dir(self._bus_dir)
+        bus_conf = _write_private_bus_config(self._bus_dir)
+        bus_args = [f"--config-file={bus_conf}"] if bus_conf is not None else []
+        # The session's bus, every service it activates and the AT-SPI bus get a runtime
+        # folder of their own (upstream issue #132, the narrower option A from its
+        # thread): at-spi-bus-launcher binds $XDG_RUNTIME_DIR/at-spi/bus and unlinks
+        # whatever was there first (at-spi2-core bus/at-spi-bus-launcher.c), so a second
+        # session sharing the host's folder took over the first one's accessibility
+        # socket, and the host desktop's own. KWin and launched apps keep the host's
+        # folder (their apps under test need its sockets); the wrapper script switches
+        # back before starting KWin, and links KWin's socket into the private folder for
+        # activated services, which resolve a bare WAYLAND_DISPLAY against their own.
+        bus_env = self._build_env(config)
+        bus_env["XDG_RUNTIME_DIR"] = str(self._bus_runtime_dir())
 
         # Start the isolated session in its own process group. stderr goes to a
         # file, not a pipe: a pipe would let a descendant block forever once
@@ -777,11 +872,11 @@ class Session:
             # Spawn through the registry so the wrapper's group is registered
             # atomically with the spawn (close() cannot slip in between).
             self._process = process_registry.spawn(
-                ["dbus-run-session", "bash", "-c", wrapper_script],
+                ["dbus-run-session", *bus_args, "bash", "-c", wrapper_script],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=self._stderr_file,
-                env=self._build_env(config),
+                env=bus_env,
                 start_new_session=True,
             )
         except BaseException:
@@ -877,8 +972,18 @@ class Session:
             msg = "Session is not running"
             raise RuntimeError(msg)
 
+        base = dict(os.environ)
+        if self.contain_apps:
+            base = {
+                k: v
+                for k, v in base.items()
+                if k in CONTAINED_ENV_NAMES or k.startswith(CONTAINED_ENV_PREFIXES)
+            }
+            # The bus's own runtime folder, where the wrapper links KWin's socket: the
+            # user's (sound, SSH agent, user services) is never named to the app.
+            base["XDG_RUNTIME_DIR"] = str(self._bus_runtime_dir())
         env = {
-            **os.environ,
+            **base,
             "WAYLAND_DISPLAY": self._socket_name,
             "QT_QPA_PLATFORM": "wayland",
             "QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1",
@@ -888,8 +993,12 @@ class Session:
         # Never leak the host DISPLAY into the isolated session: X11 apps would
         # silently open on the user's real desktop instead of failing. The
         # virtual compositor starts no Xwayland, so there is no session-local
-        # value to substitute. An explicit extra_env DISPLAY still applies.
-        env.pop("DISPLAY", None)
+        # value to substitute. Nor SESSION_MANAGER: an app would register with
+        # the user's real session manager over XSMP (to be restored at their next
+        # login, asked to quit at their logout; Firefox hangs on it). An explicit
+        # extra_env value still applies.
+        for name in HOST_DESKTOP_ENV:
+            env.pop(name, None)
         if extra_env:
             env.update(extra_env)
         if self._info.dbus_address:
@@ -1021,6 +1130,10 @@ class Session:
             shutil.rmtree(self._session_config_dir, ignore_errors=True)
             process_registry.unregister_temp_dir(self._session_config_dir)
             self._session_config_dir = None
+        if self._bus_dir is not None:
+            shutil.rmtree(self._bus_dir, ignore_errors=True)
+            process_registry.unregister_temp_dir(self._bus_dir)
+            self._bus_dir = None
 
         # Unregister the temp dirs this stop removed, so the registry stays
         # accurate across start/stop cycles and the server's exit path never
@@ -1053,6 +1166,10 @@ class Session:
             shutil.rmtree(self._session_config_dir, ignore_errors=True)
             process_registry.unregister_temp_dir(self._session_config_dir)
             self._session_config_dir = None
+        if self._bus_dir is not None:
+            shutil.rmtree(self._bus_dir, ignore_errors=True)
+            process_registry.unregister_temp_dir(self._bus_dir)
+            self._bus_dir = None
         if self._home_dir is None:
             return
         if self._config is None or not self._config.retention.home:
@@ -1174,11 +1291,19 @@ class Session:
             parts.append(f"stdout: {stdout_tail}")
         return f" {'; '.join(parts)}" if parts else ""
 
+    @staticmethod
+    def _backend_args(config: SessionConfig) -> str:
+        """KWin's backend: headless (--virtual), or a window on the host (kwin-mcp-warden)."""
+        if config.host_wayland_socket:
+            return f"--wayland-display {shlex.quote(config.host_wayland_socket)}"
+        return "--virtual"
+
     def _build_wrapper_script(self, config: SessionConfig) -> str:
         """Build the bash script that runs inside dbus-run-session."""
         # The opt-in is read from the server's environment, never from a
         # session's extra env. On failure the warning names it unless it is set.
         direct_start = os.environ.get(ATSPI_DIRECT_START_ENV) == "1"
+        host_runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
         python_executable = sys.executable
         helper = (
             [python_executable, "-I", "-S", os.path.abspath(dbus_service_file.__file__)]
@@ -1343,6 +1468,15 @@ fi
 # only after KWin creates it.
 dbus-update-activation-environment WAYLAND_DISPLAY={self._socket_name} QT_QPA_PLATFORM=wayland
 
+# Everything above ran in the session's private runtime folder (start()); KWin and the
+# apps use the host's. Activated services stay in the private one and reach KWin
+# through this link.
+if [ "$XDG_RUNTIME_DIR" != {shlex.quote(host_runtime)} ]; then
+    ln -sfn {shlex.quote(str(Path(host_runtime) / self._socket_name))} \\
+        "$XDG_RUNTIME_DIR/{self._socket_name}"
+    export XDG_RUNTIME_DIR={shlex.quote(host_runtime)}
+fi
+
 # Start KWin WITHOUT WAYLAND_DISPLAY to prevent nesting attempt.
 # KWin with --virtual creates its own compositor, it must not try
 # to connect to another compositor as a client.
@@ -1355,7 +1489,7 @@ dbus-update-activation-environment WAYLAND_DISPLAY={self._socket_name} QT_QPA_PL
 env -u WAYLAND_DISPLAY -u QT_QPA_PLATFORM -u KDE_FULL_SESSION -u KDE_SESSION_VERSION \
     KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 \
     KWIN_SCREENSHOT_NO_PERMISSION_CHECKS=1 \
-    kwin_wayland --virtual --no-lockscreen \
+    kwin_wayland {self._backend_args(config)} --no-lockscreen \
     --width {config.screen_width} --height {config.screen_height} \
     --output-count {config.output_count} \
     --socket {self._socket_name} &
@@ -1417,6 +1551,13 @@ echo "READY"
 # Block until kwin exits
 wait $KWIN_PID
 """
+
+    def _bus_runtime_dir(self) -> Path:
+        """The runtime folder of the session's bus and the services it activates (start())."""
+        assert self._bus_dir is not None
+        path = self._bus_dir / "run"
+        path.mkdir(mode=0o700, exist_ok=True)
+        return path
 
     def _build_env(self, config: SessionConfig) -> dict[str, str]:
         """Build the environment for the isolated session."""
@@ -1647,6 +1788,10 @@ class LiveSession:
             "QT_QPA_PLATFORM": "wayland",
             "QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1",
             "QT_ACCESSIBILITY": "1",
+            # kwin-mcp-warden: Chrome and Electron read this at startup
+            # (ui/accessibility/platform/atk_util_auralinux.cc), so an app launched here
+            # describes itself without the desktop's switch.
+            "ACCESSIBILITY_ENABLED": "1",
         }
         if self._info.dbus_address:
             env["DBUS_SESSION_BUS_ADDRESS"] = self._info.dbus_address

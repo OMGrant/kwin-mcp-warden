@@ -1270,8 +1270,8 @@ mutation = "Leftover alias registration for a removed tool name"
 source = "QC-001"
 qa = ["QA-GATE-008", "QA-SURF-001"]
 tier = "unit"
-kill = ["tests/unit/test_tool_registration.py::test_list_tools_is_static_29_names"]
-note = "Registers a leftover 'screenshot' alias tool delegating to screen_capture, so tools/list carries 30 names including a removed one; the static-29-names test detects it."
+kill = ["tests/unit/test_tool_registration.py::test_list_tools_is_static_31_names"]
+note = "Registers a leftover 'screenshot' alias tool delegating to screen_capture, so tools/list carries 32 names including a removed one; the static-31-names test detects it."
 
 [[mutant.patch]]
 file = "src/kwin_mcp/server.py"

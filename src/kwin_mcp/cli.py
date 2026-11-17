@@ -45,11 +45,13 @@ from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
 from pydantic import BaseModel, TypeAdapter
 
 from kwin_mcp import models
-from kwin_mcp.core import AutomationEngine
 from kwin_mcp.session import process_registry
+from kwin_mcp.warden.gate import WardenEngine
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
+    from kwin_mcp.core import AutomationEngine
 
 
 def _needs_json(annotation: object) -> bool:
@@ -268,7 +270,7 @@ class KwinMcpShell(cmd.Cmd):
         live_session_mode: bool = False,
     ) -> None:
         super().__init__()
-        self.engine = engine or AutomationEngine()
+        self.engine = engine or WardenEngine()
         self.live_session_mode = live_session_mode
         self._commands: dict[str, Callable[..., Any]] = self._discover_commands()
         self._shipped_docs: dict[str, tuple[str, dict[str, str]]] | None = None
@@ -308,6 +310,16 @@ class KwinMcpShell(cmd.Cmd):
 
         try:
             kwargs = _parse_args(method, arg_string)
+            reason = kwargs.get("reason")
+            if (
+                isinstance(self.engine, WardenEngine)
+                and isinstance(reason, str)
+                and "reason" not in inspect.signature(method).parameters
+            ):
+                # The warden's ask-every-time tools take reason="..." here as over MCP:
+                # it goes on the card, not to the engine.
+                del kwargs["reason"]
+                self.engine._note_reason(cmd_name, reason)
             if cmd_name == "session_stop":
                 # A signal must not interrupt the teardown (it would skip launched apps).
                 with _defer_shutdown_signals():

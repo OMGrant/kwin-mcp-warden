@@ -187,7 +187,18 @@ def _table_rows(body: str) -> list[list[str]]:
 
 
 def _release_entry() -> tuple[str, str]:
-    """The heading and body of the first released version in CHANGELOG.md."""
+    """The heading and body of the kwin-mcp 1.0.0 entry in CHANGELOG.md.
+
+    kwin-mcp-warden keeps upstream's 1.0.0 entry (the tool migration tables) below its own
+    first release, so this finds it by version instead of by position.
+    """
+    versions = list(_sections(CHANGELOG.read_text(encoding="utf-8"), 2).items())
+    assert versions[0][0] == "[Unreleased]", "the CHANGELOG must start with [Unreleased]"
+    return next(item for item in versions if item[0].startswith("[1.0.0] - "))
+
+
+def _fork_release_entry() -> tuple[str, str]:
+    """The heading and body of the first released kwin-mcp-warden version."""
     versions = list(_sections(CHANGELOG.read_text(encoding="utf-8"), 2).items())
     assert versions[0][0] == "[Unreleased]", "the CHANGELOG must start with [Unreleased]"
     return versions[1]
@@ -206,11 +217,18 @@ def _old_name(cell: str) -> str:
 @pytest.mark.qa("QA-PKG-004")
 def test_changelog_1_0_0_migration_table() -> None:
     heading, body = _release_entry()
+    assert re.fullmatch(r"\[1\.0\.0\] - \d{4}-\d{2}-\d{2}", heading), heading
+    # The fork's own first release is the newest entry and carries pyproject's version.
+    fork_heading, fork_body = _fork_release_entry()
     version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
         "version"
     ]
-    assert re.fullmatch(rf"\[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}", heading), heading
-    assert version == "1.0.0"
+    assert re.fullmatch(rf"\[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}", fork_heading), (
+        fork_heading
+    )
+    assert version == "0.1.0"
+    for term in ("access_request", "access_list", "reason", "WardenEngine", "31"):
+        assert term in fork_body, term
     categories = _sections(body, 3)
     assert {"Added", "Changed", "Removed"} <= categories.keys()
     assert set(categories) <= {"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}
@@ -281,8 +299,9 @@ def test_changelog_1_0_0_migration_table() -> None:
 
 def test_changelog_preserves_0_12_release_and_matching_migration() -> None:
     versions = _sections(CHANGELOG.read_text(encoding="utf-8"), 2)
-    assert list(versions)[:4] == [
+    assert list(versions)[:5] == [
         "[Unreleased]",
+        "[0.1.0] - 2026-11-14",
         "[1.0.0] - 2026-10-15",
         "[0.12.0] - 2026-10-15",
         "[0.11.0] - 2026-10-12",

@@ -6,12 +6,12 @@ import { AbsolutePath } from "@opencode/schema/schema";
 
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url));
 const SKILL_NAME = "kwin-desktop-automation";
-const MCP_NAME = "kwin-mcp";
+const MCP_NAME = "kwin-mcp-warden";
 const SKILL_PATH = join(PLUGIN_DIR, "..", "skill", SKILL_NAME, "SKILL.md");
 
 const MCP_CONFIG = {
   type: "local" as const,
-  command: ["uvx", "kwin-mcp"],
+  command: ["kwin-mcp-warden"],
 };
 
 function loadBundledSkill(): Skill.Info | null {
@@ -39,7 +39,7 @@ function loadBundledSkill(): Skill.Info | null {
 }
 
 export default Plugin.define({
-  id: "kwin-mcp-opencode",
+  id: "kwin-mcp-warden-opencode",
   async setup(ctx) {
     await ctx.mcp.transform((editor) => {
       if (!editor.get(MCP_NAME)) {
