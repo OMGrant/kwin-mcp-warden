@@ -5,7 +5,7 @@ On the live desktop nothing passes without a grant the person gave on a consent 
 (UAC-style: front and center on the primary monitor, every screen dimmed, only a click
 allows, Allow waits 1 s, Esc or 2 min = Don't Allow). Grants are per window (with its own dialogs and menus) in four levels
 (See, Arrange, Control, Full desktop), or a screen of Claude's own; they last the length the
-person picks on the card (1, 4 or 8 hours; Full desktop 30 min or 1 hour; ceilings in settings,
+person picks on the card (1, 4 or 8 hours or until the session ends; Full desktop 30 min or 1 hour; ceilings in settings,
 `lengths.py`), and end with the session, on Meta+Alt+Esc, or from the access list.
 
 - Spec: `design/mock/index.html` (its "Accessibility" section too), served with

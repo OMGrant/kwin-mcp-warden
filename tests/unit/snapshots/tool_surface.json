@@ -8073,7 +8073,7 @@
     },
     "minutes": {
      "type": "integer",
-     "description": "Minutes wanted, 0 = this session; the person picks."
+     "description": "Minutes wanted, 0 = until the session ends; the person picks."
     }
    },
    "required": [

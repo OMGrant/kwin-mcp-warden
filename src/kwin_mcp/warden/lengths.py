@@ -4,12 +4,12 @@ The person picks the length on the card, shorter or longer than the agent asked;
 the agent's ask only decides which one is selected when the card opens. The
 settings file sets the longest one offered (``max_grant_minutes``,
 ``max_full_desktop_minutes``); 0 there means a grant may last until the session
-ends, and the card then offers "This session" too.
+ends, and the card then offers "Until session ends" too.
 """
 
 from __future__ import annotations
 
-SESSION = 0  # "This session": until the agent's session ends
+SESSION = 0  # "Until session ends": as long as the agent's session runs
 # A session-long grant still ends with the session's server, the stop key or the
 # access list; its record carries a far-off expiry so every check stays a number.
 SESSION_SECONDS = 100 * 365 * 24 * 3600
@@ -50,9 +50,9 @@ def pick(asked: int | None, default: int, choices: list[int]) -> int:
 
 
 def chip(minutes: int) -> str:
-    """A choice on the card: "30 min", "1 hour", "4 hours", "This session"."""
+    """A choice on the card: "30 min", "1 hour", "4 hours", "Until session ends"."""
     if minutes == SESSION:
-        return "This session"
+        return "Until session ends"
     if minutes % 60 == 0:
         hours = minutes // 60
         return "1 hour" if hours == 1 else f"{hours} hours"
@@ -60,9 +60,9 @@ def chip(minutes: int) -> str:
 
 
 def allow(minutes: int) -> str:
-    """The Allow button for a length: "Allow for 1 Hour", "Allow for This Session"."""
+    """The Allow button for a length: "Allow for 1 Hour", "Allow Until Session Ends"."""
     if minutes == SESSION:
-        return "Allow for This Session"
+        return "Allow Until Session Ends"
     if minutes % 60 == 0:
         hours = minutes // 60
         return "Allow for 1 Hour" if hours == 1 else f"Allow for {hours} Hours"

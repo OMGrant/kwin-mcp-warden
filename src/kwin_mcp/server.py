@@ -1193,7 +1193,7 @@ def access_request(
     ] = "",
     minutes: Annotated[
         int | None,
-        Field(description="Minutes wanted, 0 = this session; the person picks."),
+        Field(description="Minutes wanted, 0 = until the session ends; the person picks."),
     ] = None,
 ) -> AccessResult:
     """Ask the person for access: a card on their primary monitor asks them, and this call waits for the answer (up to 2 minutes). They pick how long it lasts."""  # noqa: E501

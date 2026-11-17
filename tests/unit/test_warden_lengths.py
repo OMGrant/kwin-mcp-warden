@@ -12,7 +12,7 @@ from kwin_mcp.warden import apps, card, gate, grants, lengths
 from kwin_mcp.warden.settings import Settings, load
 
 
-def test_the_default_ceiling_offers_up_to_eight_hours():
+def test_an_eight_hour_ceiling_offers_up_to_eight_hours():
     assert lengths.offered(lengths.WINDOW_LADDER, 60, 480) == [60, 240, 480]
     assert lengths.offered(lengths.FULL_DESKTOP_LADDER, 30, 60) == [30, 60]
 
@@ -45,7 +45,7 @@ def test_an_ask_past_every_length_selects_the_session_when_offered():
         (30, "30 min", "Allow for 30 Minutes"),
         (60, "1 hour", "Allow for 1 Hour"),
         (240, "4 hours", "Allow for 4 Hours"),
-        (0, "This session", "Allow for This Session"),
+        (0, "Until session ends", "Allow Until Session Ends"),
     ],
 )
 def test_words(minutes, chip, allow):
@@ -117,7 +117,7 @@ def test_the_card_selects_the_agents_ask(warden, monkeypatch):
     shown = _answer(warden, monkeypatch, card.Outcome("deny"))
     warden.request("control", "org.kde.kate", "Long test run.", minutes=200)
     (request,) = shown
-    assert [c["minutes"] for c in request["lengths"]] == [60, 240, 480]
+    assert [c["minutes"] for c in request["lengths"]] == [60, 240, 480, 0]
     assert request["length"] == 240
     assert request["allow"] == "Allow for 4 Hours"
 
@@ -139,7 +139,15 @@ def test_a_length_the_card_didnt_offer_counts_as_the_one_it_opened_with(warden, 
     assert abs((grant.expires - grant.given) - 240 * 60) < 1
 
 
-def test_the_session_is_offered_only_without_a_ceiling(warden, monkeypatch):
+def test_until_session_ends_is_offered_by_default(warden, monkeypatch):
+    _answer(warden, monkeypatch, card.Outcome("allow", minutes=0))
+    warden.request("control", "org.kde.kate", "Test.", minutes=0)
+    (grant,) = warden.book.alive()
+    assert grant.describe().endswith("(until the session ends)")
+
+
+def test_a_ceiling_takes_until_session_ends_away(warden, monkeypatch):
+    warden.settings.max_grant_minutes = 480
     _answer(warden, monkeypatch, card.Outcome("allow", minutes=0))
     warden.request("control", "org.kde.kate", "Test.", minutes=0)
     (grant,) = warden.book.alive()

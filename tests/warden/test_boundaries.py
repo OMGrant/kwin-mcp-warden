@@ -630,7 +630,7 @@ def test_a_granted_windows_dialog_comes_with_it(claude, person, apps):
         claude.warden.book.end_all()
 
 
-@pytest.mark.parametrize(("asked", "picked"), [(480, 60), (60, 480)])
+@pytest.mark.parametrize(("asked", "picked"), [(480, 60), (60, 480), (60, 0)])
 def test_the_person_picks_how_long_not_the_agent(claude, person, apps, asked, picked):
     """The agent asks for one length; the person clicks another on the card, shorter or
     longer, and the grant lasts what the person picked."""
@@ -657,7 +657,10 @@ def test_the_person_picks_how_long_not_the_agent(claude, person, apps, asked, pi
     allowed, text = result["value"]
     assert allowed, text
     (grant,) = [g for g in claude.warden.book.alive() if g.kind == "window"]
-    assert abs((grant.expires - grant.given) - picked * 60) < 5, grant.expires - grant.given
+    if picked == 0:  # "Until session ends"
+        assert grant.describe().endswith("(until the session ends)"), grant.describe()
+    else:
+        assert abs((grant.expires - grant.given) - picked * 60) < 5, grant.expires - grant.given
     claude.warden.book.end_all()
 
 

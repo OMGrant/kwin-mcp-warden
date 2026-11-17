@@ -110,10 +110,10 @@ class Settings:
     """Every setting the warden reads; field defaults are the design's."""
 
     # How long a grant lasts: the length selected on the card when the agent doesn't
-    # ask for one, and the longest the card offers (0 = until the session ends, and the
-    # card offers "This session"). The person picks any offered length on the card.
+    # ask for one, and the longest the card offers (0 = no ceiling: the card also offers
+    # "Until session ends"). The person picks any offered length on the card.
     grant_minutes: int = 60  # "Allow for 1 Hour"
-    max_grant_minutes: int = 480  # a window or a screen of its own: up to 8 hours
+    max_grant_minutes: int = 0  # a window or a screen of its own: up to the session's end
     full_desktop_minutes: int = 30
     max_full_desktop_minutes: int = 60  # the whole desktop: up to 1 hour
     own_screen_minutes: int = 60
